@@ -475,9 +475,9 @@ template <int dim>
 double
 Elastic::RightHandSide<dim>::value (const Point<dim>  &p, const unsigned int component) const
 {
-	if (component == 1){ // y-component
+	if (component == 1) // y-component
 		return (par.weight);
-	}
+	
 	return 0;
 }
 
@@ -526,43 +526,43 @@ Elastic::Coefficients<dim>::mu_value_list (const std::vector<Point<dim> > &point
 									   std::vector<double>            &values,
 									   const unsigned int              component) const
 {
-	Assert (values.size() == points.size(),
-			ExcDimensionMismatch (values.size(), points.size()));
+	Assert (values.size() == points.size(), ExcDimensionMismatch (values.size(), points.size()));
 	Assert (component == 0, ExcIndexRange (component, 0, 1));
 	const unsigned int n_points = points.size();
 	
 	for (unsigned int i=0; i<n_points; ++i)
 	{
-		/*// reserved for variable mu(x,y)
-		 if (points[i].square() < 0.5*0.5)
-		 values[i] = 20;
-		 else
-		 values[i] = 1;
-		 */
+		// // reserved for variable mu(x,y)
+		// if (points[i].square() < 0.5*0.5)
+		// values[i] = 20;
+		// else
+		// values[i] = 1;
+		 
 		values[i] = mu;
 	}
 }
+
 template <int dim>
 double
 Elastic::Coefficients<dim>::beta_value (const Point<dim> &p,
 									  const unsigned int /*component*/) const
 {
-	/*// reserved for variable beta(x,y)
-	 if (p.square() < 0.5*0.5)
-	 return 20;
-	 else
-	 return 1;
-	 */
+	// // reserved for variable beta(x,y)
+	// if (p.square() < 0.5*0.5)
+	// 	return 20;
+	// else
+	// 	return 1;
+	
 	return beta;
 }
+
 template <int dim>
 void
-Elastic::Coefficients<dim>::beta_value_list (const std::vector<Point<dim> > &points,
-										 std::vector<double>            &values,
-										 const unsigned int              component) const
+Elastic::Coefficients<dim>::beta_value_list (const 	std::vector<Point<dim> >		&points,
+													std::vector<double>				&values,
+													const unsigned int				component) const
 {
-	Assert (values.size() == points.size(),
-			ExcDimensionMismatch (values.size(), points.size()));
+	Assert (values.size() == points.size(), ExcDimensionMismatch (values.size(), points.size()));
 	Assert (component == 0, ExcIndexRange (component, 0, 1));
 	const unsigned int n_points = points.size();
 	
@@ -649,8 +649,7 @@ vmult (TrilinosWrappers::BlockVector       &dst,
 template <int dim>
 void
 Elastic::ExactSolution<dim>::vector_value (const Point<dim> &p, Vector<double>   &values) const{
-	Assert (values.size() == dim+1,
-			ExcDimensionMismatch (values.size(), dim+1));
+	Assert (values.size() == dim+1, ExcDimensionMismatch (values.size(), dim+1));
 	
 	const double yb = par.y1*par.L; // scaled bottom
 	const double x  = p[0]*par.L;
