@@ -142,7 +142,7 @@ public:
     std::vector<unsigned int>		inv_iterations, schur_iterations;
 	
 	std::string					str_poisson;
-	std::stringstream			str_info,dofs;
+	std::stringstream			dofs;
 private:
 	bool						verbose; // Verbose parameter set
 	// Used to convert string boundary type to enum boundary types
