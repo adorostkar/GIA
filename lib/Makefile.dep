@@ -1,8 +1,0 @@
-lib/2d/main.o: \
-		source/main.cc
-lib/2d/main.g.o: \
-		source/main.cc
-lib/2d/parameters.o: \
-		source/parameters.cc
-lib/2d/parameters.g.o: \
-		source/parameters.cc
