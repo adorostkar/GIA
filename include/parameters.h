@@ -68,11 +68,11 @@ class parameters
 {
 public:
 	//default constructor
-	parameters();
+	parameters(const std::string f = "vardata.dat");
 	// If the application does not have any command line options
 	// this works the same as default constructor
 	// If no --file options is passed, the program assumes default file is used.
-	parameters(int argc, char* argv[]);
+	parameters(int argc, char* argv[], const std::string f = "vardata.dat");
 
 	// Copy constructor
 	parameters(const parameters &pm);
@@ -125,7 +125,8 @@ public:
 	double						YOUNG,POISSON,ETA;
 	double						rho_i,rho_r,g0;
 	double						x1,y1,x2,y2,Ix,h;
-	double						L,U,S,T,scale1,scale2,scale3;
+	double						L,U,S,T; // Scaling parameters for length, displacement, Stress and time
+	double						scale1,scale2,scale3;
 	double						alpha, beta, delta, gamma;
     // alpha = rho_i*h/rho_r
     // beta  = E*(1-2*v)/( 4*v*(1+v) )

@@ -1,16 +1,8 @@
-// #include <sys/stat.h>
-
-// #include <list>
-// #include <iostream>
-// #include <fstream>
-// #include <string.h>
-// #include <sstream>
-// #include <cmath>
-// #include <vector>
-// #include <getopt.h>
-// #include <cstdlib>
-// #include <cstdio>
-// #include <iomanip>
+/* TODO
+ - Change parameter object from in namespace to something shared between classes.
+ - Revise print_matlab method code
+ - Move Matlab_print_matrix to a class
+*/
 
 #include <deal.II/base/timer.h>
 #include <deal.II/base/quadrature_lib.h>
@@ -189,6 +181,8 @@ namespace Elastic
         void run ();
         
     private:
+    	// print matlab code for matrices
+    	void print_matlab( string filename);
         void setup_dofs ();
         void assemble_system ();
         void setup_AMG ();
@@ -279,167 +273,6 @@ void matlab_print_matrix(const FullMatrix<number> &M, string filename ){
 		myfile << ";" << endl;
 	}
 	myfile << "];" << endl;
-	myfile.close();
-}
-
-void print_matlab( string filename, parameters& par ){
-	//Printing in matlab form
-	string extension = filename + ".m";
-	ofstream myfile(extension.c_str());
-	
-	int figure = 1;
-	
-	if(!myfile.is_open()){
-		cout << "Print_matlab: Unable to open file...";
-		return;
-	}
-		
-	//for(unsigned int i = 0;i < 5;i++){
-	//	  myfile << i << "\t";
-	//}
-	//myfile << "];" << endl;
-	myfile << "close all;clear;" << endl;
-	
-	if(par.print_matrices){
-		myfile << "data_a00" << endl;
-		myfile << "data_a01" << endl;
-		myfile << "data_a10" << endl;
-		myfile << "data_a11" << endl;
-		myfile << "" << endl;
-		
-		myfile << "A = [A00 A01; A10 A11];" << endl;
-		myfile << "" << endl;
-		
-		myfile << "data_p00" << endl;
-		myfile << "data_p01" << endl;
-		myfile << "data_p10" << endl;
-		myfile << "data_p11" << endl;
-		myfile << "" << endl;
-		
-		myfile << "P = [P00 P01; P10 P11];" << endl;
-		myfile << "" << endl;
-		
-		myfile << "Ainv = inv(A00);" << endl;
-		myfile << "S = A11 - A10*Ainv*A01;" << endl;
-		
-		myfile << "figure(" << figure << ");mesh(S);title('Full Schur');" << endl;
-		figure++;
-		
-		myfile << "figure(" << figure << ");mesh(P11);title('Element-by-element Schur');" << endl;
-		figure++;
-		
-		myfile << "data_l_m;" << endl;
-		myfile << "data_l_p;" << endl;
-		//myfile << "data_l_o;" << endl;
-		//myfile << "data_l_po;" << endl;
-		myfile << "" << endl;
-		
-		//myfile << "figure("<<figure<<");spy(L_M);title('Local Matrix');" << endl;
-		//figure++;
-		//myfile << "figure("<<1<<");spy(L_P);title('Local preconditioner');" << endl;
-		// figure++;
-		//myfile << "figure("<<1<<");spy(A);title('Global matrix');" << endl;
-		// figure++;
-		//myfile << "figure("<<1<<");spy(P);title('Global preconditioner');" << endl;
-		// figure++;
-		//myfile << "figure("<<1<<");spy(L_O);title('Local matrix ordered');" << endl;
-		// figure++;
-		//myfile << "figure("<<1<<");spy(L_PO);title('Local preconditioner ordered');" << endl;
-		// figure++;
-		
-		myfile	<< "eigS=eig(S);\n"
-				<< "eigSe=eig(P11);\n"
-				<< "eigM=eig(A11);\n\n"
-				<< "r_part=[real(eigS) real(eigSe) real(eigM)];\n"
-				<< "i_part=[imag(eigS) imag(eigSe) imag(eigM)];\n"
-				<< "figure("<< figure <<");plot(r_part)\n";
-		figure++;
-		
-		myfile << "figure(" << figure << ");plot(r_part);title('Quality comparison of $S,\hat S$ and $C$','Interpreter','latex');"<<endl;
-		figure++;
-
-		myfile	<< "legend('$S$','$\hat S$','$C$','Interpreter','latex');\n"
-				<< "h1 = legend;\n"
-				<< "set(h1, 'interpreter', 'latex')\n"
-				<< "figure("<< figure <<");plot(i_part);title('Quality comparison of $S,\hat S$ and $C$','Interpreter','latex');"<<endl;
-		figure++;
-        
-	}
-	
-	std::stringstream xplot;
-	xplot << "set(gca,'XTick',";
-	
-	if(par.cases() == 2)
-		xplot << "-4000:500:0)\nxlabel('y(xt) ";
-	else if(par.cases() == 1)
-		xplot << "0:5000:"<<par.x2*1e4<<")\nxlabel('x(y=0) ";
-	else if(par.cases() == 0)
-		xplot << "0:2000:"<<par.x2*1e4<<")\nxlabel('x(y=0) ";
-	
-	xplot << "in (Km)');\n";
-	
-	myfile	<< "surface_values0_2;\n"
-			<< "surface_values0_3;\n"
-			<< "surface_values0_4;\n"
-			<< "surface_values0_5;\n\n"
-			<< "x = sol0_2(:,1);\n"
-			<< "y = sol0_2(:,2);\n"
-			<< "domain = " 
-			<< ((par.cases() == 2)?"y(:,1)":"x(:,1)") << ";\n\n";
-
-	myfile	<< "horizontal = [sol0_2(:,3) sol0_3(:,3) sol0_4(:,3) sol0_5(:,3)];\n"
-			<< "vertical   = [sol0_2(:,4) sol0_3(:,4) sol0_4(:,4) sol0_5(:,4)];\n"
-			<< "pressure   = [sol0_2(:,5) sol0_3(:,5) sol0_4(:,5) sol0_5(:,5)];\n\n";
-
-	myfile	<< "% Change default axes fonts.\n"
-			<< "set(0,'DefaultAxesFontName', 'Times New Roman');\n"
-			<< "set(0,'DefaultAxesFontSize', 16);\n\n";
-
-	myfile	<< "% Change default text fonts.\n"
-			<< "set(0,'DefaultTextFontname', 'Times New Roman');\n"
-			<< "set(0,'DefaultTextFontSize', 16);\n\n";
-
-	myfile	<< "figure("<<figure<<"); plot(domain,horizontal(:,1:4));%title('horizontal');\n"
-			<< xplot.str() 
-			<< "ylabel('Horizontal displacement in (m)');\n"
-			<< "hleg1 = legend('\\nu=0.2','\\nu=0.3','\\nu=0.4','\\nu=0.5', 'Location','SouthEast');\n"
-			<< "grid on\n"
-			<< "%set(gca, 'GridLineStyle', '-');\n" << endl;
-	figure++;
-	
-	myfile	<< "figure("<< figure <<"); plot(domain,  vertical(:,1:4));%title('vertical');\n"
-			<< xplot.str()
-			<< "ylabel('Vertical displacement in (m)');\n"
-			<< "hleg1 = legend('\\nu=0.2','\\nu=0.3','\\nu=0.4','\\nu=0.5', 'Location','SouthEast');\n"
-			<< "grid on\n"
-			<< "%set(gca, 'GridLineStyle', '-');\n\n" << endl;
-	figure++;
-	
-	myfile	<< "% analytical constants, alpha = rho_i*h/rho_r, delta = (1+v)(1-2v)/(E(1-v)), 1/(2mu + lambda) = (1+v)(1-2v)/(E(1-v))\n"
-			<< "v = 0.2;E = " << (par.S*par.YOUNG) << "; g = " << par.g0 << "; h = "<< par.h <<";\n"
-			<< "rho_i = "<< par.rho_i << "; rho_r = " << par.rho_r << ";\n"
-			<< "alpha = "<< par.alpha <<";\n"
-			<< "beta  = "<< par.beta <<";\n"
-			<< "delta = (1+v)*(1-2*v)/(E*(1-v));\n"
-			<< "gamma = "<< par.gamma <<";\n";
-
-	myfile	<< "yb    = " << (par.L*par.y1) << ";\n\n"
-			<< "A1 = (1+v)*(1-2*v)/(E*(1-v))*g*rho_i*h; % rho_i\n\n"
-			<< "mu     = E/(2*(1+v));\n"
-			<< "lambda = E*v/((1+v)*(1-2*v));\n";
-	
-	myfile	<< "y = 1000*domain;%yb:abs(yb)/1000:0.0;\n"
-			<< "v1 = A1.*(yb-y);\n"
-			<< "v2 = alpha.*(exp(rho_r*g*delta.*yb)-exp(rho_r*g*delta.*y));\n"
-			<< "p = -rho_i*g*h*gamma;\n\n";
-
-	myfile	<< "%figure("<<figure<<");plot(y,v1,y,v2);\n" << endl;
-	figure++;
-
-	myfile	<< "p1 = sol0_2(:,4)\n;"
-			<< "%figure("<<figure<<");plot(domain,p1,domain,p);\n"
-			<< endl;
-	
 	myfile.close();
 }
 
@@ -1344,7 +1177,7 @@ Elastic::ElasticProblem<dim>::run ()
 	
 	// printing: matrices, par.info
 	if(par.POISSON == 0.2 ){
-		print_matlab("gia", par);
+		print_matlab("gia");
 	}
 	if(par.solve){
 		int tempSpace = 15;
@@ -1421,6 +1254,169 @@ Elastic::ElasticProblem<dim>::surface_values () {
 		std::cout << "... extracting surface values ..."
         << " dx = " << dx << ", n = " << n
         << std::endl;
+}
+
+template <int dim>
+void
+Elastic::ElasticProblem<dim>::print_matlab( string filename){
+	//Printing in matlab form
+	string extension = filename + ".m";
+	ofstream myfile(extension.c_str());
+	
+	int figure = 1;
+	
+	if(!myfile.is_open()){
+		cout << "Print_matlab: Unable to open file...";
+		return;
+	}
+		
+	//for(unsigned int i = 0;i < 5;i++){
+	//	  myfile << i << "\t";
+	//}
+	//myfile << "];" << endl;
+	myfile << "close all;clear;" << endl;
+	
+	if(par.print_matrices){
+		myfile << "data_a00" << endl;
+		myfile << "data_a01" << endl;
+		myfile << "data_a10" << endl;
+		myfile << "data_a11" << endl;
+		myfile << "" << endl;
+		
+		myfile << "A = [A00 A01; A10 A11];" << endl;
+		myfile << "" << endl;
+		
+		myfile << "data_p00" << endl;
+		myfile << "data_p01" << endl;
+		myfile << "data_p10" << endl;
+		myfile << "data_p11" << endl;
+		myfile << "" << endl;
+		
+		myfile << "P = [P00 P01; P10 P11];" << endl;
+		myfile << "" << endl;
+		
+		myfile << "Ainv = inv(A00);" << endl;
+		myfile << "S = A11 - A10*Ainv*A01;" << endl;
+		
+		myfile << "figure(" << figure << ");mesh(S);title('Full Schur');" << endl;
+		figure++;
+		
+		myfile << "figure(" << figure << ");mesh(P11);title('Element-by-element Schur');" << endl;
+		figure++;
+		
+		myfile << "data_l_m;" << endl;
+		myfile << "data_l_p;" << endl;
+		//myfile << "data_l_o;" << endl;
+		//myfile << "data_l_po;" << endl;
+		myfile << "" << endl;
+		
+		//myfile << "figure("<<figure<<");spy(L_M);title('Local Matrix');" << endl;
+		//figure++;
+		//myfile << "figure("<<1<<");spy(L_P);title('Local preconditioner');" << endl;
+		// figure++;
+		//myfile << "figure("<<1<<");spy(A);title('Global matrix');" << endl;
+		// figure++;
+		//myfile << "figure("<<1<<");spy(P);title('Global preconditioner');" << endl;
+		// figure++;
+		//myfile << "figure("<<1<<");spy(L_O);title('Local matrix ordered');" << endl;
+		// figure++;
+		//myfile << "figure("<<1<<");spy(L_PO);title('Local preconditioner ordered');" << endl;
+		// figure++;
+		
+		myfile	<< "eigS=eig(S);\n"
+				<< "eigSe=eig(P11);\n"
+				<< "eigM=eig(A11);\n\n"
+				<< "r_part=[real(eigS) real(eigSe) real(eigM)];\n"
+				<< "i_part=[imag(eigS) imag(eigSe) imag(eigM)];\n"
+				<< "figure("<< figure <<");plot(r_part)\n";
+		figure++;
+		
+		myfile << "figure(" << figure << ");plot(r_part);title('Quality comparison of $S,\hat S$ and $C$','Interpreter','latex');"<<endl;
+		figure++;
+
+		myfile	<< "legend('$S$','$\hat S$','$C$','Interpreter','latex');\n"
+				<< "h1 = legend;\n"
+				<< "set(h1, 'interpreter', 'latex')\n"
+				<< "figure("<< figure <<");plot(i_part);title('Quality comparison of $S,\hat S$ and $C$','Interpreter','latex');"<<endl;
+		figure++;
+        
+	}
+	
+	std::stringstream xplot;
+	xplot << "set(gca,'XTick',";
+	
+	if(par.cases() == 2)
+		xplot << "-4000:500:0)\nxlabel('y(xt) ";
+	else if(par.cases() == 1)
+		xplot << "0:5000:"<<par.x2*1e4<<")\nxlabel('x(y=0) ";
+	else if(par.cases() == 0)
+		xplot << "0:2000:"<<par.x2*1e4<<")\nxlabel('x(y=0) ";
+	
+	xplot << "in (Km)');\n";
+	
+	myfile	<< "surface_values0_2;\n"
+			<< "surface_values0_3;\n"
+			<< "surface_values0_4;\n"
+			<< "surface_values0_5;\n\n"
+			<< "x = sol0_2(:,1);\n"
+			<< "y = sol0_2(:,2);\n"
+			<< "domain = " 
+			<< ((par.cases() == 2)?"y(:,1)":"x(:,1)") << ";\n\n";
+
+	myfile	<< "horizontal = [sol0_2(:,3) sol0_3(:,3) sol0_4(:,3) sol0_5(:,3)];\n"
+			<< "vertical   = [sol0_2(:,4) sol0_3(:,4) sol0_4(:,4) sol0_5(:,4)];\n"
+			<< "pressure   = [sol0_2(:,5) sol0_3(:,5) sol0_4(:,5) sol0_5(:,5)];\n\n";
+
+	myfile	<< "% Change default axes fonts.\n"
+			<< "set(0,'DefaultAxesFontName', 'Times New Roman');\n"
+			<< "set(0,'DefaultAxesFontSize', 16);\n\n";
+
+	myfile	<< "% Change default text fonts.\n"
+			<< "set(0,'DefaultTextFontname', 'Times New Roman');\n"
+			<< "set(0,'DefaultTextFontSize', 16);\n\n";
+
+	myfile	<< "figure("<<figure<<"); plot(domain,horizontal(:,1:4));%title('horizontal');\n"
+			<< xplot.str() 
+			<< "ylabel('Horizontal displacement in (m)');\n"
+			<< "hleg1 = legend('\\nu=0.2','\\nu=0.3','\\nu=0.4','\\nu=0.5', 'Location','SouthEast');\n"
+			<< "grid on\n"
+			<< "%set(gca, 'GridLineStyle', '-');\n" << endl;
+	figure++;
+	
+	myfile	<< "figure("<< figure <<"); plot(domain,  vertical(:,1:4));%title('vertical');\n"
+			<< xplot.str()
+			<< "ylabel('Vertical displacement in (m)');\n"
+			<< "hleg1 = legend('\\nu=0.2','\\nu=0.3','\\nu=0.4','\\nu=0.5', 'Location','SouthEast');\n"
+			<< "grid on\n"
+			<< "%set(gca, 'GridLineStyle', '-');\n\n" << endl;
+	figure++;
+	
+	myfile	<< "% analytical constants, alpha = rho_i*h/rho_r, delta = (1+v)(1-2v)/(E(1-v)), 1/(2mu + lambda) = (1+v)(1-2v)/(E(1-v))\n"
+			<< "v = 0.2;E = " << (par.S*par.YOUNG) << "; g = " << par.g0 << "; h = "<< par.h <<";\n"
+			<< "rho_i = "<< par.rho_i << "; rho_r = " << par.rho_r << ";\n"
+			<< "alpha = "<< par.alpha <<";\n"
+			<< "beta  = "<< par.beta <<";\n"
+			<< "delta = (1+v)*(1-2*v)/(E*(1-v));\n"
+			<< "gamma = "<< par.gamma <<";\n";
+
+	myfile	<< "yb    = " << (par.L*par.y1) << ";\n\n"
+			<< "A1 = (1+v)*(1-2*v)/(E*(1-v))*g*rho_i*h; % rho_i\n\n"
+			<< "mu     = E/(2*(1+v));\n"
+			<< "lambda = E*v/((1+v)*(1-2*v));\n";
+	
+	myfile	<< "y = 1000*domain;%yb:abs(yb)/1000:0.0;\n"
+			<< "v1 = A1.*(yb-y);\n"
+			<< "v2 = alpha.*(exp(rho_r*g*delta.*yb)-exp(rho_r*g*delta.*y));\n"
+			<< "p = -rho_i*g*h*gamma;\n\n";
+
+	myfile	<< "%figure("<<figure<<");plot(y,v1,y,v2);\n" << endl;
+	figure++;
+
+	myfile	<< "p1 = sol0_2(:,4)\n;"
+			<< "%figure("<<figure<<");plot(domain,p1,domain,p);\n"
+			<< endl;
+	
+	myfile.close();
 }
 
 
