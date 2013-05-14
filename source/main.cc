@@ -12,10 +12,10 @@ int main (int argc, char** argv)
 		Utilities::MPI::MPI_InitFinalize mpi_initialization (argc, argv);
 		
 		// get parameters
-		Elastic::par = parameters(argc,argv); 
+		parameters *par = new parameters(argc,argv); 
 		
 		ostringstream filename;
-		filename << "iterations" << Elastic::par.str_poisson << ".log";
+		filename << "iterations" << par->str_poisson << ".log";
 		ofstream pout(filename.str().c_str());
 		
 		// Attach deallog to process output
@@ -23,8 +23,8 @@ int main (int argc, char** argv)
 		deallog.depth_console (0);
 		
 		
-		if(Elastic::par.dimension == 2){
-			Elastic::ElasticProblem<2> elastic_problem(Elastic::par.degree);
+		if(par->dimension == 2){
+			Elastic::ElasticProblem<2> elastic_problem(par->degree, par);
 			elastic_problem.run ();
 		// }else if(par.dimension == 3){
 			//ElasticProblem<3> elastic_problem(par.degree);
