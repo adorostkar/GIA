@@ -1,7 +1,7 @@
 /* TODO
  - Change parameter object from in namespace to something shared between classes.
  - Revise print_matlab method code
- - Move Matlab_print_matrix to a class
+ - Revise Matlab_print_matrix code
 */
 
 #include <deal.II/base/timer.h>
@@ -181,6 +181,9 @@ namespace Elastic
         void run ();
         
     private:
+    	std::string to_upper(const std::string str);
+    	void matlab_print_matrix(const TrilinosWrappers::SparseMatrix &M, string filename );
+    	void matlab_print_matrix(const FullMatrix<double> &M, string filename );
     	// print matlab code for matrices
     	void print_matlab( string filename);
         void setup_dofs ();
@@ -215,81 +218,16 @@ namespace Elastic
    ======================= DECLARATION ======================
    ========================================================== */
 
-
-/* ------------------------- REVISE -------------------------- */
-// Change string to uppercase
-std::string to_upper(const std::string str){
-	std::string out_str(str);
-	for (int i = 0; i < str.size(); ++i) 
-		out_str[i] = toupper(str[i]);
-	return out_str;
-}
-
-// Create a matlab file with matrices
-void matlab_print_matrix(const TrilinosWrappers::SparseMatrix &M, string filename ){
-	//Printing in matlab form
-	string extension = "data_" + filename + ".m";
-	string up_filename = to_upper(filename);
-	
-	ofstream myfile(extension.c_str());
-	
-	if (!myfile.is_open()){
-		cout << "Unable to open file";
-		return;
-	}
-	myfile << up_filename.c_str() << " = [" << endl;
-	
-	for(unsigned int i = 0;i < M.m();i++){
-		for(unsigned int j = 0;j < M.n();j++){
-			
-			myfile << M.el(i,j) << "\t";
-		}
-		myfile << ";" << endl;
-	}
-	myfile << "];" << endl;
-	myfile << up_filename.c_str() << " = sparse(" << up_filename.c_str() << ");" << endl;
-	myfile.close();
-}
-
-template<typename number>
-void matlab_print_matrix(const FullMatrix<number> &M, string filename ){
-	//Printing in matlab form
-	string extension = "data_" + filename + ".m";
-	to_upper(filename);
-	
-	ofstream myfile(extension.c_str());
-	
-	if (!myfile.is_open()){
-		cout << "Unable to open file";
-		return;
-	}
-	myfile << filename.c_str() << " = [" << endl;
-	
-	for(unsigned int i = 0;i < M.m();i++){
-		for(unsigned int j = 0;j < M.n();j++){
-			
-			myfile << M(i,j) << "\t";
-		}
-		myfile << ";" << endl;
-	}
-	myfile << "];" << endl;
-	myfile.close();
-}
-
-/* ---------------------- END REVISE ---------------------- */
-
 template <int dim>
 double
 Elastic::BoundaryValues<dim>::value (const Point<dim>  &p, const unsigned int component) const
 {
 	Assert (component < this->n_components, ExcIndexRange (component, 0, this->n_components));
 	
-	if ( (par.load_enabled == true)&&(component == 1) ){
-		if( (std::fabs(p[1] - par.y2) < ZERO)&&( p[0] <= par.Ix ) ){
-			//printf(" returning boundary condition, ");
-			return (par.load); // rho_I * g * h
+	if ( (par.load_enabled) && (component == 1) ){
+		if( (std::fabs(p[1] - par.y2) < ZERO) && ( p[0] <= par.Ix ) ){
+			return (par.load);
 		}
-		//return (par.load*( 0.5 + atan( (p[0] - par.Ix)/0.01 )/numbers::PI ) );
 	}
 	return 0;
 }
@@ -535,26 +473,8 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
 	
 	//GridGenerator::hyper_cube (triangulation, par.left, par.right);
 	
-	// geometry
-	// #define TOP			0
-	// #define RIGHT		1
-	// #define BOTTOM		2
-	// #define LEFT			3
-	
-	// #define NEUMANN		0
-	// #define NO_SLIP		1
-	// #define V_SLIP		2
-	// #define LOAD			3
-	
 	// JC: labeling the faces of the gometry with boundary conditions
 	par.load_enabled = true;
-	
-	/*
-     par.b_left		= V_SLIP;  // V_SLIP
-     par.b_right		= NEUMANN; // NEUMANN
-     par.b_bottom	= NO_SLIP; // NO_SLIP
-     par.b_up		= NEUMANN; // NEUMANN
-     */
 	
 	par.print_variables();
 	
@@ -666,7 +586,6 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
 	body_force.block(0).reinit (n_u);
 	body_force.block(1).reinit (n_p);
 	body_force.collect_sizes ();
-	
 }
 
 template <int dim>
@@ -704,17 +623,17 @@ Elastic::ElasticProblem<dim>::assemble_system ()
 	
 	unsigned int 			order[] = {0,3,6, 9,12,14,16,18,20, 1,4,7,10,13,15,17,19,21, 2,5,8,11};// use guido recommendation
 	
-	FullMatrix<double>   cell_matrix  (dofs_per_cell, dofs_per_cell),
-    cell_ordered (dofs_per_cell, dofs_per_cell),
-    cell_precond (dofs_per_cell, dofs_per_cell),
-    l_A 	(dim_u,dim_u),
-    l_Bt 	(dim_u,dim_p),
-    l_B	(dim_p,dim_u),
-    l_C 	(dim_p,dim_p),
-    l_S	(dim_p,dim_p),
-    l_Ainv	(dim_u,dim_u),
-    l_Adiag	(dim_u,dim_u), // laplacian
-    aux	(dim_u,dim_u);
+	FullMatrix<double>	cell_matrix  (dofs_per_cell, dofs_per_cell),
+    					cell_ordered (dofs_per_cell, dofs_per_cell),
+    					cell_precond (dofs_per_cell, dofs_per_cell),
+    					l_A 	(dim_u,dim_u),
+    					l_Bt 	(dim_u,dim_p),
+    					l_B	(dim_p,dim_u),
+    					l_C 	(dim_p,dim_p),
+    					l_S	(dim_p,dim_p),
+    					l_Ainv	(dim_u,dim_u),
+    					l_Adiag	(dim_u,dim_u), // laplacian
+    					aux	(dim_u,dim_u);
 	
 	Vector<double>       cell_rhs (dofs_per_cell);
 	
@@ -929,8 +848,7 @@ Elastic::ElasticProblem<dim>::assemble_system ()
 		first = false;
 		counter++;
 	} // end cell
-	
-}// end assemble_system
+}
 
 template <int dim>
 void
@@ -976,7 +894,7 @@ Elastic::ElasticProblem<dim>::solve ()
 {
 	
 	const BlockSchurPreconditioner<typename Preconditioner::inner, // A, schur
-	typename Preconditioner::schur>
+									typename Preconditioner::schur>
     preconditioner( system_preconditioner, *A_preconditioner, *S_preconditioner); // system_matrix
     
 	SolverControl solver_control (system_matrix.m(),
@@ -1035,7 +953,6 @@ Elastic::ElasticProblem<dim>::compute_errors () const
 		std::cout << u_l2_error
 				  << "\t" << p_l2_error<<"\t";
 	}
-	
 }
 
 template <int dim>
@@ -1084,13 +1001,15 @@ Elastic::ElasticProblem<dim>::run ()
 	t_ass = timer();
 
 	if(par.info == 0)
-		std::cout << t_ass << std::endl;// << "\n";
+		std::cout << t_ass << std::endl;
 	
 	if(par.info == 0)
 		std::cout << "   AMG preconditioners ... ";
-	setup_AMG ();  
+
+	setup_AMG ();
+
 	if(par.info == 0)
-		std::cout << timer() << std::endl;// << "\n";
+		std::cout << timer() << std::endl;
 	
 	// applying the Dirichlet BC
 	
@@ -1156,10 +1075,10 @@ Elastic::ElasticProblem<dim>::run ()
 		t_tot = timer();
 		t_solve = t_tot - t_ass;
 		if(par.info == 0)
-			std::cout << t_solve << std::endl;// << "\n";
+			std::cout << t_solve << std::endl;
 		
 		// printing solver info
-		for(int i = 0;i < par.inv_iterations.size(); i++){
+		for(int i = 0; i < par.inv_iterations.size(); i++){
 			inv_iter   += par.inv_iterations[i];
 			schur_iter += par.schur_iterations[i];
 		}
@@ -1204,8 +1123,6 @@ Elastic::ElasticProblem<dim>::run ()
 				 << endl;
 		}
 	}
-	
-	// cout<< par.str_info.str() <<endl;
 }
 
 template <int dim>
@@ -1419,5 +1336,68 @@ Elastic::ElasticProblem<dim>::print_matlab( string filename){
 	myfile.close();
 }
 
+// Create a matlab file with matrices
+template <int dim>
+void
+Elastic::ElasticProblem<dim>::matlab_print_matrix(const TrilinosWrappers::SparseMatrix &M, string filename ){
+	//Printing in matlab form
+	string extension = "data_" + filename + ".m";
+	string up_filename = to_upper(filename);
+	
+	ofstream myfile(extension.c_str());
+	
+	if (!myfile.is_open()){
+		cout << "Unable to open file";
+		return;
+	}
+	myfile << up_filename.c_str() << " = [" << endl;
+	
+	for(unsigned int i = 0;i < M.m();i++){
+		for(unsigned int j = 0;j < M.n();j++){
+			
+			myfile << M.el(i,j) << "\t";
+		}
+		myfile << ";" << endl;
+	}
+	myfile << "];" << endl;
+	myfile << up_filename.c_str() << " = sparse(" << up_filename.c_str() << ");" << endl;
+	myfile.close();
+}
+
+template <int dim>
+void
+Elastic::ElasticProblem<dim>::matlab_print_matrix(const FullMatrix<double> &M, string filename ){
+	//Printing in matlab form
+	string extension = "data_" + filename + ".m";
+	to_upper(filename);
+	
+	ofstream myfile(extension.c_str());
+	
+	if (!myfile.is_open()){
+		cout << "Unable to open file";
+		return;
+	}
+	myfile << filename.c_str() << " = [" << endl;
+	
+	for(unsigned int i = 0;i < M.m();i++){
+		for(unsigned int j = 0;j < M.n();j++){
+			
+			myfile << M(i,j) << "\t";
+		}
+		myfile << ";" << endl;
+	}
+	myfile << "];" << endl;
+	myfile.close();
+}
+
+// Change string to uppercase
+template <int dim>
+std::string
+Elastic::ElasticProblem<dim>::to_upper(const std::string str){
+	std::string out_str(str);
+	for (int i = 0; i < str.size(); ++i) 
+		out_str[i] = toupper(str[i]);
+	return out_str;
+}
 
 #endif
