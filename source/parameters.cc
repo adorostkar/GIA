@@ -477,7 +477,7 @@ void parameters::parse_command_line(int argc, char* argv[]){
     do {
 		next_option = getopt_long (argc, argv, short_options,
 								   long_options, NULL);
-		switch (next_option){ // p y i s t r e
+        switch (next_option){
 			case '0': // --footing
 				x1			= 0.0;
 				y1			= -4e6;

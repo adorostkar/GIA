@@ -393,6 +393,7 @@ vmult (TrilinosWrappers::BlockVector       &dst,
 	   const TrilinosWrappers::BlockVector &src) const
 {
 	
+    // Solver control for solving the block with A^{-1}
 	SolverControl control_inv (s_matrix->block(0,0).m(),
                                par->InvMatPreTOL*src.block(0).l2_norm());
 	control_inv.enable_history_data ();
@@ -400,18 +401,15 @@ vmult (TrilinosWrappers::BlockVector       &dst,
 	control_inv.log_result (true);
 	
 	SolverGMRES<TrilinosWrappers::Vector> // SchurTOL
-	solver (control_inv,
-			SolverGMRES<TrilinosWrappers::Vector >::AdditionalData(100));
+            solver (control_inv, SolverGMRES<TrilinosWrappers::Vector >::AdditionalData(100));
 	
+    // Solve the block system for A^{-1}
 	solver.solve(s_matrix->block(0,0), dst.block(0), src.block(0), a_preconditioner);
-	/*
-     std::cout << "  "
-     << solver_control.last_step()
-     << " GMRES: Inner iterations for displacements"
-     << std::endl;
-     */
 	
+    // Push number of inner iterations to solve first block.
 	par->inv_iterations.push_back(control_inv.last_step());
+
+    // Write number of inner iterations to log file.
 	deallog << "\t\tInner " << control_inv.last_step() << ", with TOL = "<< par->InvMatPreTOL*src.block(0).l2_norm() << std::endl;
 	
 	// a_preconditioner.vmult (dst.block(0), src.block(0));
@@ -419,7 +417,7 @@ vmult (TrilinosWrappers::BlockVector       &dst,
 	s_matrix->block(1,0).residual(tmp, dst.block(0), src.block(1));
 	tmp *= -1;
 	
-	if(par->one_schur_it){
+    if(par->one_schur_it){// Use one iteration to find Schure complement
 		s_preconditioner.vmult (dst.block(1), tmp);
 	}
 	else{
@@ -430,12 +428,14 @@ vmult (TrilinosWrappers::BlockVector       &dst,
 		control_s.log_result (true);
 		
 		SolverGMRES<TrilinosWrappers::Vector> // SchurTOL
-		solver (control_s,
-				SolverGMRES<TrilinosWrappers::Vector >::AdditionalData(100));
+                solver (control_s, SolverGMRES<TrilinosWrappers::Vector >::AdditionalData(100));
 		
 		solver.solve(s_matrix->block(1,1), dst.block(1), tmp, s_preconditioner);
 		
+        // Push number of inner iterations for computing Schure complement.
 		par->schur_iterations.push_back(control_s.last_step());
+
+        // Write number of inner iterations for computing Schure complement to file.
 		deallog << "\t\tSchur " << control_s.last_step() << ", with TOL = "<< par->SchurTOL*tmp.l2_norm() << std::endl;
 	}
 }
@@ -445,29 +445,31 @@ void
 Elastic::ExactSolution<dim>::vector_value (const Point<dim> &p, Vector<double>   &values) const{
 	Assert (values.size() == dim+1, ExcDimensionMismatch (values.size(), dim+1));
 
-	const double yb = par->y1*par->L; // scaled bottom
-	const double x  = p[0]*par->L;
-	const double y  = p[1]*par->L;
-	const double A  = par->delta*par->g0*par->rho_i*par->h;
-	const double p0 = par->gamma*par->rho_i*par->g0*par->h;
-	
-	//v1 = A*(yb-y);
-	//p  = par->alpha*(exp(par->rho_r*par->g0*par->delta*yb)-exp(par->rho_r*par->g*par->delta*y));
+    // Variables fetched from "par" object for readability.
+    double L = par->L, alpha = par->alpha, delta = par->delta, gamma = par->gamma;
+    double rho_r = par->rho_r, g0 = par->g0;
+
+
+    const double yb = par->y1*L; // scaled bottom
+    const double x  = p[0]*L;
+    const double y  = p[1]*L;
+    const double A  = par->delta * g0 * par->rho_i * par->h;
+    const double p0 = gamma * par->rho_i * g0 * par->h;
 	
 	if(par->cases() == 2){ // Uniform load
 		values(0) = 0;
 		if(par->adv_enabled){
 			if(par->div_enabled){ // adv = 1, div = 1, complete
 				values(1) = A*(yb-y);
-				values(2) = -p0*par->L;
+                values(2) = -p0 * L;
 			}
 			else{				// adv = 1, div = 0, pre-stress of adv
-				values(1) =  par->alpha*(exp(par->rho_r*par->g0*par->delta*yb)-exp(par->rho_r*par->g0*par->delta*y));
-				values(2) = -p0*exp(par->rho_r*par->g0*par->delta*y)*par->L;
+                values(1) =  alpha * (exp(rho_r * g0 * delta * yb) - exp(rho_r * g0 * delta *y));
+                values(2) = -p0 * exp(rho_r * g0 * delta * y) * L;
 			}
 		}else{					// adv = 0, div = 0, simple case
 			values(1) = A*(yb-y);
-			values(2) = -p0*par->L;
+            values(2) = -p0 * L;
 		}
 	}else{ // no exact solution available
 		values(0) = 1e10;
@@ -507,11 +509,12 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
 	subdivisions[1] = par->ydivisions;
     
 	const Point<dim> bottom_left = (dim == 2 ?
-									Point<dim>(par->x1,par->y1) :
-									Point<dim>(par->x1,0,par->y1));
+                                        Point<dim>(par->x1,par->y1) :
+                                        Point<dim>(par->x1,0,par->y1));
+
 	const Point<dim> top_right   = (dim == 2 ?
-									Point<dim>(par->x2,par->y2) :
-									Point<dim>(par->x2,1,par->y2));
+                                        Point<dim>(par->x2,par->y2) :
+                                        Point<dim>(par->x2,1,par->y2));
     
 	GridGenerator::subdivided_hyper_rectangle (triangulation,
 											   subdivisions,
@@ -578,7 +581,7 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
 	par->dofs << triangulation.n_active_cells() << "\t(" << n_u << '+' << n_p << ')';
 	
 	const unsigned int
-    n_couplings = dof_handler.max_couplings_between_dofs();
+            n_couplings = dof_handler.max_couplings_between_dofs();
 	
 	sparsity_pattern.reinit (2,2);
 	sparsity_pattern.block(0,0).reinit (n_u, n_u, n_couplings);

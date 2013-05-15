@@ -136,7 +136,7 @@ public:
 	bool						print_local,print_matrices, one_schur_it;
 	bool						load_enabled,weight_enabled,adv_enabled,div_enabled;
 	bool						solve;
-	// writeback parameters to file.
+    // writeback parameters to file.
 	bool						writeback;
 	
 	boundary_Type				b_up,b_left,b_right,b_bottom;
