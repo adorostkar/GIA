@@ -743,12 +743,12 @@ Elastic::ElasticProblem<dim>::assemble_system ()
                                          + div_phi_u[i] * phi_p[j] * mu_values[q]				// Bt
                                          + phi_p[i] * div_phi_u[j] * mu_values[q]				// B
                                          - phi_p[i] * phi_p[j] * beta_values[q] )				// C
-                    * fe_values.JxW(q);
+                                    * fe_values.JxW(q);
 					
 					cell_precond(i,j) += (
                                           phi_p[i] * div_phi_u[j] * mu_values[q]				// B
-										  )
-                    * fe_values.JxW(q);
+                                          )*
+                                          fe_values.JxW(q);
 					
 				}// end j
 				
@@ -758,13 +758,13 @@ Elastic::ElasticProblem<dim>::assemble_system ()
 		} // end q
 		
 		// Neumann Boundary conditions (Ice-Load and free surface)
-		for (unsigned int face_no=0;face_no<GeometryInfo<dim>::faces_per_cell;++face_no){
-			if (cell->face(face_no)->at_boundary() /* && (cell->face(face_no)->boundary_indicator() == par->b_up )*/ ){
+        for (unsigned int face_num=0;face_num<GeometryInfo<dim>::faces_per_cell;++face_num){
+            if (cell->face(face_num)->at_boundary() /* && (cell->face(face_no)->boundary_indicator() == par->b_up )*/ ){
                 //if (cell->at_boundary(face_no))
-				Point<dim> face_center = cell->face(face_no)->center();
+                Point<dim> face_center = cell->face(face_num)->center();
 				if(face_center[dim-1] == par->y2){ // y2 = surface or TOP boundary
 					
-					fe_face_values.reinit (cell, face_no);
+                    fe_face_values.reinit (cell, face_num);
                     
 					for (unsigned int q=0; q<n_face_q_points; ++q)
 						for (unsigned int i=0; i<dofs_per_cell; ++i){
@@ -781,14 +781,14 @@ Elastic::ElasticProblem<dim>::assemble_system ()
 		
 		// Local assemble and Schur generation
 		// extract here using velocities, pressure
-		for (unsigned int i=0; i<dofs_per_cell; ++i){									// shape index i
-			for (unsigned int j=0; j < dofs_per_cell; ++j){								// shape index j
+        for (unsigned int i=0; i<dofs_per_cell; ++i){// shape index i
+            for (unsigned int j=0; j < dofs_per_cell; ++j){// shape index j
 				
 				cell_ordered(i,j) = cell_matrix(order[i],order[j]); // local matrix ordered by u0,u1...un,v0,v1...vn,p0,p1...pm
 				
 				if( i < dim_u ){
-					if(j < dim_u){
-						l_A(i,j)  = cell_ordered(i,j);  // i < dim_u, j <  dim_u
+                    if(j < dim_u){// i < dim_u, j <  dim_u
+                        l_A(i,j)  = cell_ordered(i,j);
 						aux(i,j)  = l_A(i,j);
 						
 						// bgn Diagonal 11 block
@@ -803,14 +803,14 @@ Elastic::ElasticProblem<dim>::assemble_system ()
 						}
 						// end Diagonal 11 block
 						
-					}else{
-						l_Bt(i,j-dim_u) = cell_ordered(i,j); // i < dim_u, j >= dim_u
+                    }else{// i < dim_u, j >= dim_u
+                        l_Bt(i,j-dim_u) = cell_ordered(i,j);
 					}
 				}else{
-					if(j < dim_u){
-						l_B(i-dim_u,j)  = cell_ordered(i,j);  // i >= dim_u, j <  dim_u
-					}else{
-						l_C(i-dim_u,j-dim_u)  = cell_ordered(i,j);  // i >= dim_u, j >= dim_u
+                    if(j < dim_u){// i >= dim_u, j <  dim_u
+                        l_B(i-dim_u,j)  = cell_ordered(i,j);
+                    }else{// i >= dim_u, j >= dim_u
+                        l_C(i-dim_u,j-dim_u)  = cell_ordered(i,j);
 						l_S(i-dim_u,j-dim_u)  = l_C(i-dim_u,j-dim_u); // -C ... look at the sign
 					}
 				}
@@ -823,19 +823,19 @@ Elastic::ElasticProblem<dim>::assemble_system ()
 		aux.diagadd(h*h);
 		l_Ainv.invert(aux);
 		
-		l_S.triple_product 	(	l_Ainv,l_B,l_Bt,false,false, -1.0  );	// is doing ok
+        l_S.triple_product 	(	l_Ainv,l_B,l_Bt,false,false, -1.0  );
 		// End Schur calculation
 		
-		// bgn Schur assembly preconditioner
-		for (unsigned int i=0; i< dim_p; ++i){									// shape index i
+        // begin Schur assembly preconditioner
+        for (unsigned int i=0; i< dim_p; ++i){// shape index i
 			for (unsigned int j=0; j < dim_p; ++j){
 				cell_precond(l_p[i],l_p[j]) = l_S(i,j);
 			}
 		}
 		// end Schur assembly preconditioner
 		
-		// bgn assembly A preconditioner
-		for (unsigned int i=0; i< dim_u; ++i){									// shape index i
+        // begin assembly A preconditioner
+        for (unsigned int i=0; i< dim_u; ++i){// shape index i
 			for (unsigned int j=0; j < dim_u; ++j){
 				if(par->precond == 0){
 					cell_precond(l_u[i],l_u[j]) = l_Adiag(i,j);
@@ -905,8 +905,8 @@ Elastic::ElasticProblem<dim>::setup_AMG ()
 	amg_A.smoother_sweeps = 2;
 	amg_A.aggregation_threshold = par->threshold;
 	
-	A_preconditioner->initialize( system_preconditioner.block(0,0),// A
-                                 amg_A);
+    // A
+    A_preconditioner->initialize( system_preconditioner.block(0,0),amg_A);
 	
 	TrilinosWrappers::PreconditionAMG::AdditionalData amg_S;
 	
@@ -915,8 +915,8 @@ Elastic::ElasticProblem<dim>::setup_AMG ()
 	amg_S.smoother_sweeps = 2;
 	amg_S.aggregation_threshold = par->threshold;
 	
-	S_preconditioner->initialize( system_preconditioner.block(1,1),// elem-by-elem Schur
-                                 amg_S);
+    // elem-by-elem Schur
+    S_preconditioner->initialize( system_preconditioner.block(1,1), amg_S);
 }
 
 template <int dim>
@@ -979,10 +979,7 @@ Elastic::ElasticProblem<dim>::compute_errors () const
 		<< "\n";
 	}
 	else{
-		// std::cout << u_l2_error
-		// 		  << par->separator << p_l2_error<<par->separator;
-		std::cout << u_l2_error
-				  << "\t" << p_l2_error<<"\t";
+        std::cout << u_l2_error << "\t" << p_l2_error <<"\t";
 	}
 }
 
@@ -1007,8 +1004,7 @@ Elastic::ElasticProblem<dim>::output_results ()
 	data_out.build_patches ();
 	
 	std::ostringstream filename;
-	filename << "solution_" << par->POISSON
-	<< ".vtk";
+	filename << "solution_" << par->POISSON	<< ".vtk";
 	
 	std::ofstream output (filename.str().c_str());
 	data_out.write_vtk (output);
@@ -1200,8 +1196,8 @@ Elastic::ElasticProblem<dim>::surface_values () {
 	
 	if(par->info == 0)
 		std::cout << "... extracting surface values ..."
-        << " dx = " << dx << ", n = " << n
-        << std::endl;
+                  << " dx = " << dx << ", n = " << n
+                  << std::endl;
 }
 
 template <int dim>
@@ -1217,11 +1213,7 @@ Elastic::ElasticProblem<dim>::print_matlab( string filename){
 		cout << "Print_matlab: Unable to open file...";
 		return;
 	}
-		
-	//for(unsigned int i = 0;i < 5;i++){
-	//	  myfile << i << "\t";
-	//}
-	//myfile << "];" << endl;
+
 	myfile << "close all;clear;" << endl;
 	
 	if(par->print_matrices){
@@ -1257,19 +1249,6 @@ Elastic::ElasticProblem<dim>::print_matlab( string filename){
 		//myfile << "data_l_o;" << endl;
 		//myfile << "data_l_po;" << endl;
 		myfile << "" << endl;
-		
-		//myfile << "figure("<<figure<<");spy(L_M);title('Local Matrix');" << endl;
-		//figure++;
-		//myfile << "figure("<<1<<");spy(L_P);title('Local preconditioner');" << endl;
-		// figure++;
-		//myfile << "figure("<<1<<");spy(A);title('Global matrix');" << endl;
-		// figure++;
-		//myfile << "figure("<<1<<");spy(P);title('Global preconditioner');" << endl;
-		// figure++;
-		//myfile << "figure("<<1<<");spy(L_O);title('Local matrix ordered');" << endl;
-		// figure++;
-		//myfile << "figure("<<1<<");spy(L_PO);title('Local preconditioner ordered');" << endl;
-		// figure++;
 		
 		myfile	<< "eigS=eig(S);\n"
 				<< "eigSe=eig(P11);\n"

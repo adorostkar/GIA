@@ -65,9 +65,9 @@ enum boundary_Type {
 	};
 
 // Parameter class,
-// This class is to have all options from and to file.
-// Options are available to the user to input parameters from command line
-// but also options can be changed by altering the file.
+// This class contains all application options including the ones only seen by
+// application and the ones available to the user to change.
+// User can alter options by command line or by using an option file.
 class parameters
 {
 public:
@@ -106,15 +106,11 @@ public:
     void set_default();
 
     // get case number
-    int cases(){return cas;};
+    int cases(){return cas;}
 	// File name of the option file
 	std::string					paramFile;
 	/* problem variables */
 
-	// The cases options are only available from command line and
-	// is excluded from the option class because it can confuse the 
-	// application if user change anything in the file directly.
-	// int							cases;
 	int							dimension, degree;
 	int							refinements;
 	int							xdivisions, ydivisions;
@@ -162,6 +158,8 @@ private:
     // inv_iteration, schure_iterations
     void compute_additionals();
 
+    // Problem case number. This can only be retrieved and can't be changed
+    // during runtime.
     int cas;
 };
 
