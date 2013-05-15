@@ -88,7 +88,7 @@ namespace Elastic
 
 	// Neumann Boundary conditions
 	template <int dim>
-	class BoundaryValues: public Function<dim>
+    class BoundaryValues: public Function<dim>
 	{
     public:
 		BoundaryValues (parameters *_par) : par(_par), Function<dim>(dim+1) {}
@@ -97,6 +97,7 @@ namespace Elastic
 		
 		virtual void vector_value (const Point<dim> &p, Vector<double>   &value) const;
 	private:
+		// pointer to parameter object
 		parameters *par;
 	};
 
@@ -111,6 +112,7 @@ namespace Elastic
 		
 		virtual void vector_value (const Point<dim> &p, Vector<double>   &value) const;
 	private:
+		// pointer to parameter object
 		parameters *par;
 	};
 
@@ -140,6 +142,7 @@ namespace Elastic
 									  std::vector<double>            &values,
 									  const unsigned int              component = 0) const;
 	private:
+		// pointer to parameter object
 		parameters *par;
 	};
 
@@ -158,6 +161,7 @@ namespace Elastic
                     const TrilinosWrappers::BlockVector &src) const;
         
     private:
+    	// pointer to parameter object
     	parameters *par;
         const SmartPointer<const TrilinosWrappers::BlockSparseMatrix> s_matrix;
         const PreconditionerA &a_preconditioner;
@@ -176,6 +180,7 @@ namespace Elastic
 		virtual void vector_value (const Point<dim> &p,
 								   Vector<double>   &value) const;
 	private:
+		// pointer to parameter object
 		parameters *par;
 	};
 	
@@ -187,16 +192,25 @@ namespace Elastic
         void run ();
         
     private:
+    	// pointer to parameter object
     	parameters *par;
+    	// Change string to uppercase
     	std::string to_upper(const std::string str);
+    	// Create matlab file with the matrix
     	void matlab_print_matrix(const TrilinosWrappers::SparseMatrix &M, string filename );
+    	// Create matlab file with the matrix
     	void matlab_print_matrix(const FullMatrix<double> &M, string filename );
     	// print matlab code for matrices
     	void print_matlab( string filename);
+    	// Setup degree of freedom (DOF) of the system.
         void setup_dofs ();
+        // Assemble the system
         void assemble_system ();
+        // Setup Algebraic multigrid(AMG)
         void setup_AMG ();
+        // Solve the system
         void solve ();
+        // Computer the error
         void compute_errors () const;
         void output_results ();
         void surface_values ();
@@ -233,7 +247,7 @@ Elastic::BoundaryValues<dim>::value (const Point<dim>  &p, const unsigned int co
 	
 	if ( (par->load_enabled) && (component == 1) ){
 		if( (std::fabs(p[1] - par->y2) < ZERO) && ( p[0] <= par->Ix ) ){
-			return (par->load);
+            return par->load;
 		}
 	}
 	return 0;
@@ -430,7 +444,7 @@ template <int dim>
 void
 Elastic::ExactSolution<dim>::vector_value (const Point<dim> &p, Vector<double>   &values) const{
 	Assert (values.size() == dim+1, ExcDimensionMismatch (values.size(), dim+1));
-	
+
 	const double yb = par->y1*par->L; // scaled bottom
 	const double x  = p[0]*par->L;
 	const double y  = p[1]*par->L;
@@ -484,7 +498,7 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
 	//GridGenerator::hyper_cube (triangulation, par->left, par->right);
 	
 	// JC: labeling the faces of the gometry with boundary conditions
-	par->load_enabled = true;
+    par->load_enabled = true; // PROBLEM?? change in parameter is made.
 	
 	par->print_variables();
 	
@@ -512,22 +526,30 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
 				
 				const Point<dim> face_center = cell->face(f)->center();
 				
-				if (face_center[dim-2] == par->x1){
+                // If x component of the face's center is on the left boundary,
+                // the face is one the left boundary
+                if (face_center[dim-2] == par->x1)
 					cell->face(f)->set_boundary_indicator(par->b_left);
-				}else if (face_center[dim-2] == par->x2){
+                // If x component of the face's center is on the right boundary,
+                // the face is on the right boundary.
+                else if (face_center[dim-2] == par->x2)
 					cell->face(f)->set_boundary_indicator(par->b_right);
-				}else if (face_center[dim-1] == par->y1){
+                // If y component of the face's center is on the bottom boundary,
+                // the face is on the bottom boundary.
+                else if (face_center[dim-1] == par->y1)
 					cell->face(f)->set_boundary_indicator(par->b_bottom);
-				}else if (face_center[dim-1] == par->y2){
+                // If y component of the face's center is on the top boundary,
+                // the face is on the top boundary.
+                else if (face_center[dim-1] == par->y2)
 					cell->face(f)->set_boundary_indicator(par->b_up);
-				}
 			}// at boundary
 		}// for faces
 	
+    // Refine the mesh with the number of refinement in the parameters.
 	triangulation.refine_global (par->refinements);
 	
 	dof_handler.distribute_dofs (fe);
-	//DoFRenumbering::Cuthill_McKee (dof_handler); // can we use it?
+    //DoFRenumbering::Cuthill_McKee (dof_handler); // PROBLEM?? can we use it?
 	
 	std::vector<unsigned int> block_component (dim+1,0);
 	block_component[dim] = 1;
@@ -546,14 +568,13 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
 	
 	if(par->info == 0){
 		std::cout << "   Number of active cells: "
-		<< triangulation.n_active_cells()
-		<< ", Number of degrees of freedom: "
-		<< dof_handler.n_dofs()
-		<< " (" << n_u << '+' << n_p << ')'
-		<< "\n";
+                  << triangulation.n_active_cells()
+                  << ", Number of degrees of freedom: "
+                  << dof_handler.n_dofs()
+                  << " (" << n_u << '+' << n_p << ')'
+                  << std::endl;
 	}
 	
-	// par->dofs << triangulation.n_active_cells() << par->separator << "(" << n_u << '+' << n_p << ')';
 	par->dofs << triangulation.n_active_cells() << "\t(" << n_u << '+' << n_p << ')';
 	
 	const unsigned int

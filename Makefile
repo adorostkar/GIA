@@ -99,7 +99,7 @@ run: $(target)$(EXEEXT)
 
 # Rule how to clean up. This is split into several different rules to
 # allow for parallel execution of commands:
-clean: clean-lib clean-data
+clean: clean-lib clean-data clean-output
 	-rm -f *~ */*~ */*/*~ lib/Makefile.dep
 
 clean-lib:
@@ -107,10 +107,12 @@ clean-lib:
 
 clean-data:
 	-rm -f $(clean-up-files)
+clean-output:
+	-rm -f *gmv *gnuplot *gpl *eps *pov *vtk *ucd *.d2 data* *.log *.m *.txt -r exp_*
 
 
 # Again tell `make' which rules are not meant to produce files:
-.PHONY: clean clean-data clean-lib run
+.PHONY: clean clean-data clean-lib clean-output run
 
 
 

@@ -2,7 +2,7 @@
 
 // Just defaults, no write is allowed since it will rewrite any parameters added in the file.
 parameters::parameters(const std::string f){
-	paramFile = f;
+    paramFile = f;
 	set_default();
 
 	inv_iterations   = std::vector<unsigned int>();
@@ -521,6 +521,9 @@ void parameters::parse_command_line(int argc, char* argv[]){
 			case '4':
 				writeback = true;
 				break;
+            case '5':
+                dimension = atoi(optarg);
+                break;
 			case 'a':   // -a or --adv
 				adv = atof(optarg);
 				break;	
@@ -617,16 +620,6 @@ void parameters::print_usage(int exitNum){
 		<< left << setw(thirdCol)	<< setfill(' ') << "[arguments]" 
 		<< "[ Description ]" << endl;
 
-	msg << left << setw(firstCol) 	<< setfill(' ') << "-h" 
-		<< left << setw(secondCol)	<< setfill(' ') << "--help" 
-		<< left << setw(thirdCol)	<< setfill(' ')  << "void" 
-		<< "Dispalay usage information"  << endl;
-
-	msg << left << setw(firstCol)	<< setfill(' ') << "-o" 
-		<< left << setw(secondCol)	<< setfill(' ') << "--output" 
-		<< left << setw(thirdCol)	<< setfill(' ') << "paramFile" 
-		<< "Write output to file"	<< endl;
-
 	msg << left << setw(firstCol)	<< setfill(' ') << "" 
 		<< left << setw(secondCol)  << setfill(' ') << "--file" 
 		<< left << setw(thirdCol)   << setfill(' ') << "paramFile" 
@@ -647,20 +640,105 @@ void parameters::print_usage(int exitNum){
 		<< left << setw(thirdCol)	<< setfill(' ') << "void" 
 		<< "GIA uniform load"  << endl;
 
+    msg << left << setw(firstCol)	<< setfill(' ') << ""
+        << left << setw(secondCol)	<< setfill(' ') << "--dim"
+        << left << setw(thirdCol)	<< setfill(' ') << "integer"
+        << "Problem dimension"  << endl;
+
+    msg << left << setw(firstCol)	<< setfill(' ') << ""
+        << left << setw(secondCol)	<< setfill(' ') << "--writeback"
+        << left << setw(thirdCol)	<< setfill(' ') << "void"
+        << "Write parameters back to the file or in the default file."  << endl;
+
 	msg << left << setw(firstCol)	<< setfill(' ') << "-a" 
 		<< left << setw(secondCol)	<< setfill(' ') << "--adv" 
 		<< left << setw(thirdCol)	<< setfill(' ') << "double" 
 		<< "Overwrite adv"  << endl;
+
+    msg << left << setw(firstCol)	<< setfill(' ') << "-b"
+        << left << setw(secondCol)	<< setfill(' ') << "--boundary_cond"
+        << left << setw(thirdCol)	<< setfill(' ') << "boundary_Type"
+        << "The boundary condition at the domain surface."  << endl;
 
 	msg << left << setw(firstCol)	<< setfill(' ') << "-d" 
 		<< left << setw(secondCol)	<< setfill(' ') << "--div" 
 		<< left << setw(thirdCol)	<< setfill(' ') << "double" 
 		<< "Overwrite div"  << endl;
 
+    msg << left << setw(firstCol)	<< setfill(' ') << "-e"
+        << left << setw(secondCol)	<< setfill(' ') << "--elastic"
+        << left << setw(thirdCol)	<< setfill(' ') << "void"
+        << "Set adv and div to zero."  << endl;
+
+    msg << left << setw(firstCol)	<< setfill(' ') << "-f"
+        << left << setw(secondCol)	<< setfill(' ') << "--surf_samples"
+        << left << setw(thirdCol)	<< setfill(' ') << "int"
+        << "The number of samples at the surface."  << endl;
+
+    msg << left << setw(firstCol)	<< setfill(' ') << "-g"
+        << left << setw(secondCol)	<< setfill(' ') << "--precond"
+        << left << setw(thirdCol)	<< setfill(' ') << "int{0,1}"
+        << "Overwrite block 11 in the preconditioner(0=diag(A),1=A)"  << endl;
+
+    msg << left << setw(firstCol) 	<< setfill(' ') << "-h"
+        << left << setw(secondCol)	<< setfill(' ') << "--help"
+        << left << setw(thirdCol)	<< setfill(' ')  << "void"
+        << "Dispalay usage information"  << endl;
+
+    msg << left << setw(firstCol)	<< setfill(' ') << "-i"
+        << left << setw(secondCol)	<< setfill(' ') << "--inv_tol"
+        << left << setw(thirdCol)	<< setfill(' ') << "double"
+        << "Overwrite InvMatPreTOL"	<< endl;
+
+    msg << left << setw(firstCol)	<< setfill(' ') << "-k"
+        << left << setw(secondCol)	<< setfill(' ') << "--info"
+        << left << setw(thirdCol)	<< setfill(' ') << "void"
+        << "Print out GIA parameters."  << endl;
+
+    msg << left << setw(firstCol)	<< setfill(' ') << "-m"
+        << left << setw(secondCol)	<< setfill(' ') << "--matlab"
+        << left << setw(thirdCol)	<< setfill(' ') << "void"
+        << "Enable Matlab printing of matrices."  << endl;
+
+    msg << left << setw(firstCol)	<< setfill(' ') << "-o"
+        << left << setw(secondCol)	<< setfill(' ') << "--output"
+        << left << setw(thirdCol)	<< setfill(' ') << "paramFile"
+        << "Write output to file"	<< endl;
+
 	msg << left << setw(firstCol)	<< setfill(' ') << "-p" 
 		<< left << setw(secondCol)	<< setfill(' ') << "--poisson" 
 		<< left << setw(thirdCol)	<< setfill(' ') << "double" 
 		<< "poisson ratio"  << endl;
+
+    msg << left << setw(firstCol)	<< setfill(' ') << "-r"
+        << left << setw(secondCol)	<< setfill(' ') << "--refinements"
+        << left << setw(thirdCol)	<< setfill(' ') << "int"
+        << "Overwrite refinements"  << endl;
+
+    msg << left << setw(firstCol)	<< setfill(' ') << "-s"
+        << left << setw(secondCol)	<< setfill(' ') << "--schur_tol"
+        << left << setw(thirdCol)	<< setfill(' ') << "double"
+        << "Overwrite SchurTOL" 	<< endl;
+
+    msg << left << setw(firstCol)	<< setfill(' ') << "-t"
+        << left << setw(secondCol)	<< setfill(' ') << "--system_tol"
+        << left << setw(thirdCol)	<< setfill(' ') << "double"
+        << "Overwrite TOL"  << endl;
+
+    msg << left << setw(firstCol)	<< setfill(' ') << "-u"
+        << left << setw(secondCol)	<< setfill(' ') << "--unique_schur"
+        << left << setw(thirdCol)	<< setfill(' ') << "void"
+        << "Enable only one Schure iteration."  << endl;
+
+    msg << left << setw(firstCol)	<< setfill(' ') << "-v"
+        << left << setw(secondCol)	<< setfill(' ') << "--verbose"
+        << left << setw(thirdCol)	<< setfill(' ') << "void"
+        << "Verbose runtime with details."  << endl;
+
+    msg << left << setw(firstCol)	<< setfill(' ') << "-w"
+        << left << setw(secondCol)	<< setfill(' ') << "--weight"
+        << left << setw(thirdCol)	<< setfill(' ') << "void"
+        << "Enable weight as body force."  << endl;
 
 	msg << left << setw(firstCol)	<< setfill(' ') << "-y" 
 		<< left << setw(secondCol)	<< setfill(' ') << "--young" 
@@ -671,76 +749,6 @@ void parameters::print_usage(int exitNum){
 		<< left << setw(secondCol)	<< setfill(' ') << "--threshold" 
 		<< left << setw(thirdCol)	<< setfill(' ') << "double" 
 		<< "AMG threshold"  << endl;
-
-	msg << left << setw(firstCol)	<< setfill(' ') << "-i" 
-		<< left << setw(secondCol)	<< setfill(' ') << "--inv_tol" 
-		<< left << setw(thirdCol)	<< setfill(' ') << "double" 
-		<< "Overwrite InvMatPreTOL"	<< endl;
-
-	msg << left << setw(firstCol)	<< setfill(' ') << "-s" 
-		<< left << setw(secondCol)	<< setfill(' ') << "--schur_tol" 
-		<< left << setw(thirdCol)	<< setfill(' ') << "double" 
-		<< "Overwrite SchurTOL" 	<< endl;
-
-	msg << left << setw(firstCol)	<< setfill(' ') << "-u" 
-		<< left << setw(secondCol)	<< setfill(' ') << "--unique_schur" 
-		<< left << setw(thirdCol)	<< setfill(' ') << "void" 
-		<< "Enable only one Schure iteration."  << endl;
-
-	msg << left << setw(firstCol)	<< setfill(' ') << "-t" 
-		<< left << setw(secondCol)	<< setfill(' ') << "--system_tol" 
-		<< left << setw(thirdCol)	<< setfill(' ') << "double" 
-		<< "Overwrite TOL"  << endl;
-
-	msg << left << setw(firstCol)	<< setfill(' ') << "-r" 
-		<< left << setw(secondCol)	<< setfill(' ') << "--refinements" 
-		<< left << setw(thirdCol)	<< setfill(' ') << "int" 
-		<< "Overwrite refinements"  << endl;
-
-	msg << left << setw(firstCol)	<< setfill(' ') << "-f" 
-		<< left << setw(secondCol)	<< setfill(' ') << "--surf_samples" 
-		<< left << setw(thirdCol)	<< setfill(' ') << "int" 
-		<< "The number of samples at the surface."  << endl;
-
-	msg << left << setw(firstCol)	<< setfill(' ') << "-b" 
-		<< left << setw(secondCol)	<< setfill(' ') << "--boundary_cond" 
-		<< left << setw(thirdCol)	<< setfill(' ') << "boundary_Type" 
-		<< "The boundary condition at the domain surface."  << endl;
-
-	msg << left << setw(firstCol)	<< setfill(' ') << "-e" 
-		<< left << setw(secondCol)	<< setfill(' ') << "--elastic" 
-		<< left << setw(thirdCol)	<< setfill(' ') << "void" 
-		<< "Set adv and div to zero."  << endl;
-
-	msg << left << setw(firstCol)	<< setfill(' ') << "-w" 
-		<< left << setw(secondCol)	<< setfill(' ') << "--weight" 
-		<< left << setw(thirdCol)	<< setfill(' ') << "void" 
-		<< "Enable weight as body force."  << endl;
-
-	msg << left << setw(firstCol)	<< setfill(' ') << "-m" 
-		<< left << setw(secondCol)	<< setfill(' ') << "--matlab" 
-		<< left << setw(thirdCol)	<< setfill(' ') << "void" 
-		<< "Enable Matlab printing of matrices."  << endl;
-
-	msg << left << setw(firstCol)	<< setfill(' ') << "-k" 
-		<< left << setw(secondCol)	<< setfill(' ') << "--info" 
-		<< left << setw(thirdCol)	<< setfill(' ') << "void" 
-		<< "Print out GIA parameters."  << endl;
-
-	msg << left << setw(firstCol)	<< setfill(' ') << "-g" 
-		<< left << setw(secondCol)	<< setfill(' ') << "--precond" 
-		<< left << setw(thirdCol)	<< setfill(' ') << "int{0,1}" 
-		<< "Overwrite block 11 in the preconditioner(0=diag(A),1=A)"  << endl;
-
-	msg << left << setw(firstCol)	<< setfill(' ') << "-v" 
-		<< left << setw(secondCol)	<< setfill(' ') << "--verbose" 
-		<< left << setw(thirdCol)	<< setfill(' ') << "void" 
-		<< "Verbose runtime with details."  << endl;
-
-	msg << left << setw(firstCol)	<< setfill(' ') << "" 
-		<< left << setw(secondCol)	<< setfill(' ') << "--writeback" 
-		<< left << setw(thirdCol)	<< setfill(' ') << "void" 
-		<< "Write parameters back to the file or in the default file."  << endl;
 
     if(!exitNum){
 	    std::cout << msg.str();

@@ -1,5 +1,8 @@
 /* TODO:
  - Add argument check. i.e boundaries for the arguments that get int or double
+ - Find a way to add variables added to struct long_options automatically to
+    print_ methods and help method.
+    + Idea: create a discription variable and iterate through that.
  */
 
 // include headers that implement a archive in simple text format
@@ -30,6 +33,7 @@ const struct option long_options[] = { // An array describing valid long options
 	{ "uniform",		no_argument,		0,		'2' },
 	{ "file",			no_argument,		0,		'3' },
 	{ "writeback",		no_argument,		0,		'4' },
+    { "dim",    		required_argument,	0,		'5' },
 	{ "adv",			required_argument,	0,		'a' },
 	{ "div",			required_argument,	0,		'd' },
 	{ "elastic",		no_argument,		0,		'e' },
