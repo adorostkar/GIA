@@ -552,11 +552,11 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
 	triangulation.refine_global (par->refinements);
 	
 	dof_handler.distribute_dofs (fe);
-    //DoFRenumbering::Cuthill_McKee (dof_handler); // PROBLEM?? can we use it?
+//    DoFRenumbering::Cuthill_McKee (dof_handler); // PROBLEM?? can we use it?
 	
-	std::vector<unsigned int> block_component (dim+1,0);
-	block_component[dim] = 1;
-	DoFRenumbering::component_wise (dof_handler, block_component);
+    std::vector<unsigned int> block_component (dim+1,0);
+    block_component[dim] = 1;
+    DoFRenumbering::component_wise (dof_handler, block_component);
     
 	A_preconditioner.reset ();
 	S_preconditioner.reset ();
@@ -593,6 +593,13 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
 	DoFTools::make_sparsity_pattern (dof_handler, sparsity_pattern);
 	sparsity_pattern.compress();
 	
+    // Print sparsity pattern of the matrix
+    if(par->print_matrices){
+        std::ofstream out ("sparsity_pattern.1");
+        sparsity_pattern.print_gnuplot (out);
+    }
+
+
 	system_matrix.reinit (sparsity_pattern);
 	system_preconditioner.reinit (sparsity_pattern);
 	

@@ -365,16 +365,16 @@ void parameters::write_Parameters(){
     	ofs << "\n## Scaling value for time." << endl;
     	ofs << "T "				<< T 					<< endl;
 
-    	ofs << "\n## Description." << endl;
+        ofs << "\n## X coordinate of the bottom left side of the domain." << endl;
     	ofs << "x1 "			<< x1 					<< endl;
 
-    	ofs << "\n## Description." << endl;
+        ofs << "\n## Y coordinate of the bottom left side of the domain." << endl;
     	ofs << "y1 "			<< y1 					<< endl;
 
-    	ofs << "\n## Description." << endl;
+        ofs << "\n## X coordinate of the top right side of the domain." << endl;
     	ofs << "x2 "			<< x2 					<< endl;
 
-    	ofs << "\n## Description." << endl;
+        ofs << "\n## Y coordinate of the top right side of the domain." << endl;
     	ofs << "y2 "			<< y2					<< endl;
 
     	ofs << "\n## Description." << endl;
@@ -398,10 +398,10 @@ void parameters::write_Parameters(){
     	ofs << "\n## Number of refinement levels of the mesh." << endl;
     	ofs << "refinements "	<< refinements			<< endl;
 
-    	ofs << "\n## Description." << endl;
+        ofs << "\n## Number of initial divisions in x direction." << endl;
     	ofs << "xdivisions "	<< xdivisions			<< endl;
 
-    	ofs << "\n## Description." << endl;
+        ofs << "\n## Number of initial divisions in y direction." << endl;
     	ofs << "ydivisions "	<< ydivisions			<< endl;
 
     	ofs << "\n## The number of samples at the surface." << endl;
