@@ -192,6 +192,10 @@ namespace Elastic
         void run ();
         
     private:
+        // conditional outputs
+        ConditionalOStream info_0, info_1, info_2;
+        // timer
+        TimerOutput computing_timer;
     	// pointer to parameter object
     	parameters *par;
     	// Change string to uppercase
@@ -483,14 +487,24 @@ Elastic::ExactSolution<dim>::vector_value (const Point<dim> &p, Vector<double>  
 template <int dim>
 Elastic::ElasticProblem<dim>::ElasticProblem (const unsigned int degree, parameters *_par)
 :
-par(_par),
-degree (degree),
-triangulation (Triangulation<dim>::maximum_smoothing),
-fe (FE_Q<dim>(degree+1), dim,
-    FE_Q<dim>(degree), 1),
-dof_handler (triangulation),
-boundary (4, 0)
-{}
+  par(_par),
+  info_0(std::cout, _par->info == 0),
+  info_1(std::cout, _par->info == 1),
+  info_2(std::cout, _par->info == 2),
+  degree (degree),
+  triangulation (Triangulation<dim>::maximum_smoothing),
+  fe (FE_Q<dim>(degree+1), dim,
+      FE_Q<dim>(degree), 1),
+  dof_handler (triangulation),
+  boundary (4, 0),
+  computing_timer (info_0,
+                   TimerOutput::summary,
+                   TimerOutput::wall_times)
+{
+//    info_0.set_condition(par->info == 0);
+//    info_1.set_condition(par->info == 1);
+//    info_2.set_condition(par->info == 2);
+}
 
 template <int dim>
 void
@@ -569,15 +583,14 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
 	const unsigned int n_u = dofs_per_block[0],
 	n_p = dofs_per_block[1];
 	
-	if(par->info == 0){
-		std::cout << "   Number of active cells: "
-                  << triangulation.n_active_cells()
-                  << ", Number of degrees of freedom: "
-                  << dof_handler.n_dofs()
-                  << " (" << n_u << '+' << n_p << ')'
-                  << std::endl;
-	}
-	
+
+    info_0 << "   Number of active cells: "
+           << triangulation.n_active_cells()
+           << ", Number of degrees of freedom: "
+           << dof_handler.n_dofs()
+           << " (" << n_u << '+' << n_p << ')'
+           << std::endl;
+
 	par->dofs << triangulation.n_active_cells() << "\t(" << n_u << '+' << n_p << ')';
 	
 	const unsigned int
@@ -891,6 +904,7 @@ Elastic::ElasticProblem<dim>::assemble_system ()
 	} // end cell
 }
 
+// PROBLEM?? check the paper.
 template <int dim>
 void
 Elastic::ElasticProblem<dim>::setup_AMG ()
@@ -983,14 +997,12 @@ Elastic::ElasticProblem<dim>::compute_errors () const
 	const double u_l2_error = cellwise_errors.l2_norm();
 	// end L2-norm
 	
-	if(par->info == 0){
-		std::cout << "Errors: ||e_u||_L2, ||e_p||_L2 = " << u_l2_error
-		<< "," << p_l2_error
-		<< "\n";
-	}
-	else{
-        std::cout << u_l2_error << "\t" << p_l2_error <<"\t";
-	}
+
+    info_0 << "Errors: ||e_u||_L2, ||e_p||_L2 = " << u_l2_error
+           << "," << p_l2_error
+           << std::endl;
+    info_1 << u_l2_error << "\t" << p_l2_error <<"\t";
+    info_2 << u_l2_error << "\t" << p_l2_error <<"\t";
 }
 
 template <int dim>
@@ -1025,28 +1037,20 @@ void
 Elastic::ElasticProblem<dim>::run ()
 {
 	double t_ass=0, t_solve=0, t_tot=0;
-	
-	Timer timer;
-	timer.start ();
-	
+
 	setup_dofs ();
-	
-	if(par->info == 0)
-		std::cout << "   Assembling ... ";
-	
-	assemble_system ();
-	t_ass = timer();
 
-	if(par->info == 0)
-		std::cout << t_ass << std::endl;
-	
-	if(par->info == 0)
-		std::cout << "   AMG preconditioners ... ";
+    info_0 << "   Assembling ... " << std::endl;
 
+    computing_timer.enter_section("Assembling");
+    assemble_system ();
+    computing_timer.exit_section("Assembling");
+	
+    info_0 << "   AMG preconditioners ... " << std::endl;
+
+    computing_timer.enter_section("AMG preconditioners");
 	setup_AMG ();
-
-	if(par->info == 0)
-		std::cout << timer() << std::endl;
+    computing_timer.exit_section("AMG preconditioners");
 	
 	// applying the Dirichlet BC
 	
@@ -1104,15 +1108,11 @@ Elastic::ElasticProblem<dim>::run ()
 	
 	int inv_iter = 0, schur_iter = 0;
 	if(par->solve){
-		if(par->info == 0)
-			std::cout << "   system solver ... ";
-		
-		solve ();
-		
-		t_tot = timer();
-		t_solve = t_tot - t_ass;
-		if(par->info == 0)
-			std::cout << t_solve << std::endl;
+        info_0 << "   system solver ... " << std::endl;
+
+        computing_timer.enter_section("System solver");
+        solve ();
+        computing_timer.exit_section("System solver");
 		
 		// printing solver info
 		for(int i = 0; i < par->inv_iterations.size(); i++){
@@ -1137,28 +1137,25 @@ Elastic::ElasticProblem<dim>::run ()
 	}
 	if(par->solve){
 		int tempSpace = 15;
-		if(par->info==0)
-			cout << "GMRES iterations: system(<inv>,<schur>) = "
-				 << par->system_iter
+        info_0   << "GMRES iterations: system(<inv>,<schur>) = "
+                 << par->system_iter
 				 << "(" << inv_iter << ", " << schur_iter << ")"
 				 << endl;
-		else if(par->info==1){
-			cout << left << setw(tempSpace) << setfill(' ') << par->system_iter 
+
+        info_1   << left << setw(tempSpace) << setfill(' ') << par->system_iter
 				 << left << setw(tempSpace) << setfill(' ') << schur_iter
 				 << left << setw(tempSpace) << setfill(' ') << t_ass
 				 << left << setw(tempSpace) << setfill(' ') << t_solve
 				 << left << setw(tempSpace) << setfill(' ') << par->dofs.str()
 				 << endl;
 
-		}else if(par->info == 2){
-			cout << left << setw(tempSpace) << setfill(' ') << par->system_iter 
+        info_2   << left << setw(tempSpace) << setfill(' ') << par->system_iter
 				 << left << setw(tempSpace) << setfill(' ') << inv_iter
 				 << left << setw(tempSpace) << setfill(' ') << schur_iter
 				 << left << setw(tempSpace) << setfill(' ') << t_ass
 				 << left << setw(tempSpace) << setfill(' ') << t_solve
 				 << left << setw(tempSpace) << setfill(' ') << par->dofs.str()
 				 << endl;
-		}
 	}
 }
 
@@ -1204,10 +1201,9 @@ Elastic::ElasticProblem<dim>::surface_values () {
 	}
 	detector_data << "];" << std::endl;
 	
-	if(par->info == 0)
-		std::cout << "... extracting surface values ..."
-                  << " dx = " << dx << ", n = " << n
-                  << std::endl;
+    info_0 << "... extracting surface values ..."
+           << " dx = " << dx << ", n = " << n
+           << std::endl;
 }
 
 template <int dim>
