@@ -1,5 +1,4 @@
 /* TODO
- - Change parameter object from in namespace to something shared between classes.
  - Revise print_matlab method code
  - Revise Matlab_print_matrix code
 */
@@ -151,8 +150,7 @@ namespace Elastic
 	class BlockSchurPreconditioner : public Subscriptor
     {
     public:
-        BlockSchurPreconditioner (
-                                  const TrilinosWrappers::BlockSparseMatrix     &S,
+        BlockSchurPreconditioner (const TrilinosWrappers::BlockSparseMatrix     &S,
                                   const PreconditionerA           &Apreconditioner,
                                   const PreconditionerS           &Spreconditioner,
                                   parameters						*_par);
@@ -581,7 +579,7 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
 	std::vector<unsigned int> dofs_per_block (2);
 	DoFTools::count_dofs_per_block (dof_handler, dofs_per_block, block_component);
 	const unsigned int n_u = dofs_per_block[0],
-	n_p = dofs_per_block[1];
+                       n_p = dofs_per_block[1];
 	
 
     info_0 << "   Number of active cells: "
@@ -680,14 +678,14 @@ Elastic::ElasticProblem<dim>::assemble_system ()
 	FullMatrix<double>	cell_matrix  (dofs_per_cell, dofs_per_cell),
     					cell_ordered (dofs_per_cell, dofs_per_cell),
     					cell_precond (dofs_per_cell, dofs_per_cell),
-    					l_A 	(dim_u,dim_u),
-    					l_Bt 	(dim_u,dim_p),
-    					l_B	(dim_p,dim_u),
-    					l_C 	(dim_p,dim_p),
-    					l_S	(dim_p,dim_p),
-    					l_Ainv	(dim_u,dim_u),
-    					l_Adiag	(dim_u,dim_u), // laplacian
-    					aux	(dim_u,dim_u);
+                        l_A          (dim_u,dim_u),
+                        l_Bt         (dim_u,dim_p),
+                        l_B          (dim_p,dim_u),
+                        l_C          (dim_p,dim_p),
+                        l_S          (dim_p,dim_p),
+                        l_Ainv       (dim_u,dim_u),
+                        l_Adiag      (dim_u,dim_u), // laplacian
+                        aux          (dim_u,dim_u);
 	
 	Vector<double>       cell_rhs (dofs_per_cell);
 	
@@ -766,7 +764,7 @@ Elastic::ElasticProblem<dim>::assemble_system ()
                                          + div_phi_u[i] * phi_p[j] * mu_values[q]				// Bt
                                          + phi_p[i] * div_phi_u[j] * mu_values[q]				// B
                                          - phi_p[i] * phi_p[j] * beta_values[q] )				// C
-                                    * fe_values.JxW(q);
+                                         * fe_values.JxW(q);
 					
 					cell_precond(i,j) += (
                                           phi_p[i] * div_phi_u[j] * mu_values[q]				// B
@@ -775,13 +773,12 @@ Elastic::ElasticProblem<dim>::assemble_system ()
 					
 				}// end j
 				
-				cell_rhs(i) +=  phi_u[i] * e * par->weight * // load vector, body force
-                fe_values.JxW(q);
+                cell_rhs(i) +=  phi_u[i] * e * par->weight * fe_values.JxW(q); // load vector, body force
 			}// end i
 		} // end q
 		
 		// Neumann Boundary conditions (Ice-Load and free surface)
-        for (unsigned int face_num=0;face_num<GeometryInfo<dim>::faces_per_cell;++face_num){
+        for (unsigned int face_num=0; face_num<GeometryInfo<dim>::faces_per_cell; ++face_num){
             if (cell->face(face_num)->at_boundary() /* && (cell->face(face_no)->boundary_indicator() == par->b_up )*/ ){
                 //if (cell->at_boundary(face_no))
                 Point<dim> face_center = cell->face(face_num)->center();
@@ -791,12 +788,12 @@ Elastic::ElasticProblem<dim>::assemble_system ()
                     
 					for (unsigned int q=0; q<n_face_q_points; ++q)
 						for (unsigned int i=0; i<dofs_per_cell; ++i){
-							const unsigned int component_i =
-							fe.system_to_component_index(i).first;
+                            const unsigned int
+                                    component_i = fe.system_to_component_index(i).first;
                             
 							cell_rhs(i) +=  fe_face_values.shape_value(i, q) *
-                            boundary_values[q](component_i) *
-                            fe_face_values.JxW(q);
+                                            boundary_values[q](component_i) *
+                                            fe_face_values.JxW(q);
 						}
 				}// end if
 			}// end if at boundary
@@ -816,10 +813,8 @@ Elastic::ElasticProblem<dim>::assemble_system ()
 						
 						// bgn Diagonal 11 block
 						if(par->precond == 0){
-							if(i < dim_disp){
-								if(j < dim_disp){
-									l_Adiag(i,j) = cell_ordered(i,j); // first block
-								}
+                            if(i < dim_disp && j < dim_disp){
+                                l_Adiag(i,j) = cell_ordered(i,j); // first block
 							}else if(j >= dim_disp){
 								l_Adiag(i,j) = cell_ordered(i,j); // second block
 							}
@@ -858,15 +853,28 @@ Elastic::ElasticProblem<dim>::assemble_system ()
 		// end Schur assembly preconditioner
 		
         // begin assembly A preconditioner
-        for (unsigned int i=0; i< dim_u; ++i){// shape index i
-			for (unsigned int j=0; j < dim_u; ++j){
-				if(par->precond == 0){
-					cell_precond(l_u[i],l_u[j]) = l_Adiag(i,j);
-				}else if(par->precond == 1){
-					cell_precond(l_u[i],l_u[j]) = l_A(i,j);
-				}
-			}
-		}
+        if(par->precond == 0){
+            for (unsigned int i=0; i< dim_u; ++i){// shape index i
+                for (unsigned int j=0; j < dim_u; ++j){
+                    cell_precond(l_u[i],l_u[j]) = l_Adiag(i,j);
+                }
+            }
+        }else if(par->precond == 1){
+            for (unsigned int i=0; i< dim_u; ++i){// shape index i
+                for (unsigned int j=0; j < dim_u; ++j){
+                    cell_precond(l_u[i],l_u[j]) = l_A(i,j);
+                }
+            }
+        }
+//      for (unsigned int i=0; i< dim_u; ++i){// shape index i
+//			for (unsigned int j=0; j < dim_u; ++j){
+//				if(par->precond == 0){
+//					cell_precond(l_u[i],l_u[j]) = l_Adiag(i,j);
+//				}else if(par->precond == 1){
+//					cell_precond(l_u[i],l_u[j]) = l_A(i,j);
+//				}
+//			}
+//		}
 		// end assembly A preconditioner
 		
 		// printing local matrices
@@ -918,7 +926,8 @@ Elastic::ElasticProblem<dim>::setup_AMG ()
 	std::vector<std::vector<bool> > constant_modes;
 	std::vector<bool>  displacement_components (dim,true);
 	//displacement_components[dim] = false;
-	DoFTools::extract_constant_modes (dof_handler, displacement_components,
+    DoFTools::extract_constant_modes (dof_handler,
+                                      displacement_components,
 									  constant_modes);
 	
 	TrilinosWrappers::PreconditionAMG::AdditionalData amg_A;
