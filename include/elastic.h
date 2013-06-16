@@ -57,6 +57,11 @@
 #include <typeinfo>
 
 #include "parameters.h"
+#include "boundary.h"
+#include "coefficient.h"
+#include "exact.h"
+#include "preconditioner.h"
+#include "rhs.h"
 
 #ifndef ELASTIC_H
 #define ELASTIC_H
@@ -67,121 +72,15 @@ using namespace std;
 using namespace dealii;
 namespace Elastic
 {
-	// Preconditioner structure
-	struct Preconditioner
-	{
-		//typedef SparseDirectUMFPACK		inner;
-		//typedef SparseILU<double>		inner; // long time computing preconditioner
-		typedef TrilinosWrappers::PreconditionAMG schur;
-		typedef TrilinosWrappers::PreconditionAMG inner; // set AMG true
-	};
-
-	// Solver structure
-	struct Solver
-	{
-		// typedef SolverCG<>		inner;
-		// typedef SolverCG<>		schur;
-		typedef SolverGMRES<TrilinosWrappers::Vector>	inner;
-		typedef SolverGMRES<>	schur;
-	};
-
-	// Neumann Boundary conditions
-	template <int dim>
-    class BoundaryValues: public Function<dim>
-	{
-    public:
-		BoundaryValues (parameters *_par) : par(_par), Function<dim>(dim+1) {}
-		
-		virtual double value (const Point<dim>   &p, const unsigned int  component = 0) const;
-		
-		virtual void vector_value (const Point<dim> &p, Vector<double>   &value) const;
-	private:
-		// pointer to parameter object
-		parameters *par;
-	};
-
-	// Right hand side // not working!
-	template <int dim>
-	class RightHandSide : public Function<dim>
-	{
-    public:
-		RightHandSide (parameters *_par) : par(_par), Function<dim>(dim+1) {}
-		
-		virtual double value (const Point<dim>   &p, const unsigned int  component = 0) const;
-		
-		virtual void vector_value (const Point<dim> &p, Vector<double>   &value) const;
-	private:
-		// pointer to parameter object
-		parameters *par;
-	};
-
-	// ------------- coefficients mu, mu^2/lambda
-	template <int dim>
-	class Coefficients : public Function<dim>
-	{
-	public:
-		double mu, beta;
-		
-		Coefficients (double E, double v, parameters *_par)  : par(_par), mu( get_mu(E,v) ), beta( get_beta(E,v) ), Function<dim>() {}
-		
-		double get_mu(double E, double v);
-		
-		double get_beta(double E, double v);
-		
-		virtual double mu_value (const Point<dim>   &p, const unsigned int  component = 0) const;
-		
-		virtual void mu_value_list (const std::vector<Point<dim> > &points,
-									std::vector<double>            &values,
-									const unsigned int              component = 0) const;
-		
-		// beta = mu^2/alpha
-		virtual double beta_value (const Point<dim>   &p, const unsigned int  component = 0) const;
-		
-		virtual void beta_value_list (const std::vector<Point<dim> > &points,
-									  std::vector<double>            &values,
-									  const unsigned int              component = 0) const;
-	private:
-		// pointer to parameter object
-		parameters *par;
-	};
-
-	// new code step-31
-	template <class PreconditionerA, class PreconditionerS>
-	class BlockSchurPreconditioner : public Subscriptor
+    // Solver structure
+    struct Solver
     {
-    public:
-        BlockSchurPreconditioner (const TrilinosWrappers::BlockSparseMatrix     &S,
-                                  const PreconditionerA           &Apreconditioner,
-                                  const PreconditionerS           &Spreconditioner,
-                                  parameters						*_par);
-        
-        void vmult (TrilinosWrappers::BlockVector       &dst,
-                    const TrilinosWrappers::BlockVector &src) const;
-        
-    private:
-    	// pointer to parameter object
-    	parameters *par;
-        const SmartPointer<const TrilinosWrappers::BlockSparseMatrix> s_matrix;
-        const PreconditionerA &a_preconditioner;
-        const PreconditionerS &s_preconditioner;
-        
-        mutable TrilinosWrappers::Vector tmp;
+        // typedef SolverCG<>		inner;
+        // typedef SolverCG<>		schur;
+        typedef SolverGMRES<TrilinosWrappers::Vector>	inner;
+        typedef SolverGMRES<>	schur;
     };
 
-    // Exact solution, measured in par->cases = 2 (Uniform load)
-	template <int dim>
-	class ExactSolution : public Function<dim>
-	{
-    public:
-		ExactSolution (parameters *_par) : par(_par), Function<dim>(dim+1) {}
-		
-		virtual void vector_value (const Point<dim> &p,
-								   Vector<double>   &value) const;
-	private:
-		// pointer to parameter object
-		parameters *par;
-	};
-	
 	template <int dim>
 	class ElasticProblem
 	{
@@ -237,251 +136,9 @@ namespace Elastic
 	};
 }
 
-/* ==========================================================
-   ======================= DECLARATION ======================
-   ========================================================== */
-
-template <int dim>
-double
-Elastic::BoundaryValues<dim>::value (const Point<dim>  &p, const unsigned int component) const
-{
-	Assert (component < this->n_components, ExcIndexRange (component, 0, this->n_components));
-	
-	if ( (par->load_enabled) && (component == 1) ){
-		if( (std::fabs(p[1] - par->y2) < ZERO) && ( p[0] <= par->Ix ) ){
-            return par->load;
-		}
-	}
-	return 0;
-}
-
-template <int dim>
-void
-Elastic::BoundaryValues<dim>::vector_value (const Point<dim> &p, Vector<double>   &values) const
-{
-	for (unsigned int c=0; c < this->n_components; ++c)
-		values(c) = BoundaryValues<dim>::value (p, c);
-}
-// End Dirichlet Boundary conditions
-
-
-template <int dim>
-double
-Elastic::RightHandSide<dim>::value (const Point<dim>  &p, const unsigned int component) const
-{
-	if (component == 1) // y-component
-		return (par->weight);
-	
-	return 0;
-}
-
-template <int dim>
-void
-Elastic::RightHandSide<dim>::vector_value (const Point<dim> &p, Vector<double>   &values) const
-{
-	for (unsigned int c=0; c<this->n_components; ++c)
-		values(c) = RightHandSide<dim>::value (p, c);
-}
-// End right hand side
-
-// coefficient transformation: get mu, mu^2/alpha with respect to E, v
-template <int dim>
-double
-Elastic::Coefficients<dim>::get_mu(double E, double v)
-{
-	mu = E/( 2*(1+v) );
-	return mu;
-}
-
-template <int dim>
-double 
-Elastic::Coefficients<dim>::get_beta(double E, double v)
-{
-	beta = E*(1-2*v)/( 4*v*(1+v) );
-	return beta;
-}
-
-template <int dim>
-double
-Elastic::Coefficients<dim>::mu_value (const Point<dim> &p,
-									const unsigned int /*component*/) const
-{
-	/*// reserved for variable mu(x,y)
-	 if (p.square() < 0.5*0.5)
-	 return 20;
-	 else
-	 return 1;
-	 */
-	return mu;
-}
-template <int dim>
-void
-Elastic::Coefficients<dim>::mu_value_list (const std::vector<Point<dim> > &points,
-									   std::vector<double>            &values,
-									   const unsigned int              component) const
-{
-	Assert (values.size() == points.size(), ExcDimensionMismatch (values.size(), points.size()));
-	Assert (component == 0, ExcIndexRange (component, 0, 1));
-	const unsigned int n_points = points.size();
-	
-	for (unsigned int i=0; i<n_points; ++i)
-	{
-		// // reserved for variable mu(x,y)
-		// if (points[i].square() < 0.5*0.5)
-		// values[i] = 20;
-		// else
-		// values[i] = 1;
-		 
-		values[i] = mu;
-	}
-}
-
-template <int dim>
-double
-Elastic::Coefficients<dim>::beta_value (const Point<dim> &p,
-									  const unsigned int /*component*/) const
-{
-	// // reserved for variable beta(x,y)
-	// if (p.square() < 0.5*0.5)
-	// 	return 20;
-	// else
-	// 	return 1;
-	
-	return beta;
-}
-
-template <int dim>
-void
-Elastic::Coefficients<dim>::beta_value_list (const 	std::vector<Point<dim> >		&points,
-													std::vector<double>				&values,
-													const unsigned int				component) const
-{
-	Assert (values.size() == points.size(), ExcDimensionMismatch (values.size(), points.size()));
-	Assert (component == 0, ExcIndexRange (component, 0, 1));
-	const unsigned int n_points = points.size();
-	
-	for (unsigned int i=0; i<n_points; ++i)
-	{
-		/* // reserved for variable beta(x,y)
-		 if (points[i].square() < 0.5*0.5)
-		 values[i] = 20;
-		 else
-		 values[i] = 1;
-		 */
-		values[i] = beta;
-	}
-}
-// end coefficients
-
-
-template <class PreconditionerA, class PreconditionerS>
-Elastic::BlockSchurPreconditioner<PreconditionerA, PreconditionerS>::
-BlockSchurPreconditioner(const TrilinosWrappers::BlockSparseMatrix  &S,
-						 const PreconditionerA                      &Apreconditioner,
-						 const PreconditionerS                      &Spreconditioner,
-						 parameters									*_par)
-:
-par 					(_par),
-s_matrix				(&S),
-a_preconditioner        (Apreconditioner),
-s_preconditioner        (Spreconditioner),
-tmp                     (s_matrix->block(1,1).m())
-{}
-
-template <class PreconditionerA, class PreconditionerS>
-void
-Elastic::BlockSchurPreconditioner<PreconditionerA, PreconditionerS>::
-vmult (TrilinosWrappers::BlockVector       &dst,
-	   const TrilinosWrappers::BlockVector &src) const
-{
-	
-    // Solver control for solving the block with A^{-1}
-	SolverControl control_inv (s_matrix->block(0,0).m(),
-                               par->InvMatPreTOL*src.block(0).l2_norm());
-	control_inv.enable_history_data ();
-	control_inv.log_history (true);
-	control_inv.log_result (true);
-	
-	SolverGMRES<TrilinosWrappers::Vector> // SchurTOL
-            solver (control_inv, SolverGMRES<TrilinosWrappers::Vector >::AdditionalData(100));
-	
-    // Solve the block system for A^{-1}
-	solver.solve(s_matrix->block(0,0), dst.block(0), src.block(0), a_preconditioner);
-	
-    // Push number of inner iterations to solve first block.
-	par->inv_iterations.push_back(control_inv.last_step());
-
-    // Write number of inner iterations to log file.
-	deallog << "\t\tInner " << control_inv.last_step() << ", with TOL = "<< par->InvMatPreTOL*src.block(0).l2_norm() << std::endl;
-	
-	// a_preconditioner.vmult (dst.block(0), src.block(0));
-	
-	s_matrix->block(1,0).residual(tmp, dst.block(0), src.block(1));
-	tmp *= -1;
-	
-    if(par->one_schur_it){// Use one iteration to find Schure complement
-		s_preconditioner.vmult (dst.block(1), tmp);
-	}
-	else{
-		SolverControl control_s (s_matrix->block(1,1).m(),
-                                 par->SchurTOL*tmp.l2_norm());
-		control_s.enable_history_data ();
-		control_s.log_history (true);
-		control_s.log_result (true);
-		
-		SolverGMRES<TrilinosWrappers::Vector> // SchurTOL
-                solver (control_s, SolverGMRES<TrilinosWrappers::Vector >::AdditionalData(100));
-		
-		solver.solve(s_matrix->block(1,1), dst.block(1), tmp, s_preconditioner);
-		
-        // Push number of inner iterations for computing Schure complement.
-		par->schur_iterations.push_back(control_s.last_step());
-
-        // Write number of inner iterations for computing Schure complement to file.
-		deallog << "\t\tSchur " << control_s.last_step() << ", with TOL = "<< par->SchurTOL*tmp.l2_norm() << std::endl;
-	}
-}
-
-template <int dim>
-void
-Elastic::ExactSolution<dim>::vector_value (const Point<dim> &p, Vector<double>   &values) const{
-	Assert (values.size() == dim+1, ExcDimensionMismatch (values.size(), dim+1));
-
-    // Variables fetched from "par" object for readability.
-    double L = par->L, alpha = par->alpha, delta = par->delta, gamma = par->gamma;
-    double rho_r = par->rho_r, g0 = par->g0;
-
-
-    const double yb = par->y1*L; // scaled bottom
-    const double x  = p[0]*L;
-    const double y  = p[1]*L;
-    const double A  = par->delta * g0 * par->rho_i * par->h;
-    const double p0 = gamma * par->rho_i * g0 * par->h;
-	
-	if(par->cases() == 2){ // Uniform load
-		values(0) = 0;
-		if(par->adv_enabled){
-			if(par->div_enabled){ // adv = 1, div = 1, complete
-				values(1) = A*(yb-y);
-                values(2) = -p0 * L;
-			}
-			else{				// adv = 1, div = 0, pre-stress of adv
-                values(1) =  alpha * (exp(rho_r * g0 * delta * yb) - exp(rho_r * g0 * delta *y));
-                values(2) = -p0 * exp(rho_r * g0 * delta * y) * L;
-			}
-		}else{					// adv = 0, div = 0, simple case
-			values(1) = A*(yb-y);
-            values(2) = -p0 * L;
-		}
-	}else{ // no exact solution available
-		values(0) = 1e10;
-		values(1) = 1e10;
-		values(2) = 1e10;
-	}
-}
-// end Exact solution
-
-
+/*
+ ------------- IMPLEMENTATION --------------
+ */
 template <int dim>
 Elastic::ElasticProblem<dim>::ElasticProblem (const unsigned int degree, parameters *_par)
 :
@@ -1424,5 +1081,9 @@ Elastic::ElasticProblem<dim>::to_upper(const std::string str){
 		out_str[i] = toupper(str[i]);
 	return out_str;
 }
+
+/*
+ **************************************
+ */
 
 #endif
