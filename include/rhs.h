@@ -72,7 +72,7 @@ namespace Elastic
 	class RightHandSide : public Function<dim>
 	{
     public:
-		RightHandSide (parameters *_par) : par(_par), Function<dim>(dim+1) {}
+        RightHandSide (parameters *_par) : Function<dim>(dim+1), par(_par) {}
 		
 		virtual double value (const Point<dim>   &p, const unsigned int  component = 0) const;
 		

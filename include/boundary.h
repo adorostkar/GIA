@@ -72,7 +72,7 @@ namespace Elastic
     class BoundaryValues: public Function<dim>
 	{
     public:
-		BoundaryValues (parameters *_par) : par(_par), Function<dim>(dim+1) {}
+        BoundaryValues (parameters *_par) : Function<dim>(dim+1), par(_par) {}
 		
 		virtual double value (const Point<dim>   &p, const unsigned int  component = 0) const;
 		

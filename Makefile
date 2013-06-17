@@ -14,7 +14,7 @@ deal_II_dimension = 2
 target   = lib/$(application-name)-$(deal_II_dimension)d
 
 # The `debug-mode' variable works as in the small projects Makefile:
-debug-mode = off
+debug-mode = on
 
 # And so does the following variable. You will have to set it to
 # something reasonable that, for example, includes the location where you
@@ -108,7 +108,7 @@ clean-lib:
 clean-data:
 	-rm -f $(clean-up-files)
 clear:
-	-rm -f *gmv *gnuplot *gpl *eps *pov *vtk *ucd *.d2 data* *.log *.m *.txt -r exp_* *.1
+	-rm -f *gmv *gnuplot *gpl *eps *pov *vtk *ucd *.d2 data* *.dat *.log *.m *.txt -r exp_* *.1
 
 
 # Again tell `make' which rules are not meant to produce files:

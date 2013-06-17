@@ -1,6 +1,5 @@
 /* TODO
- - Revise print_matlab method code
- - Revise Matlab_print_matrix code
+
 */
 
 #include <deal.II/base/timer.h>
@@ -89,20 +88,21 @@ namespace Elastic
         void run ();
         
     private:
+        // pointer to parameter object
+        parameters *par;
         // conditional outputs
         ConditionalOStream info_0, info_1, info_2;
         // timer
         TimerOutput computing_timer;
-    	// pointer to parameter object
-    	parameters *par;
     	// Change string to uppercase
     	std::string to_upper(const std::string str);
-    	// Create matlab file with the matrix
-    	void matlab_print_matrix(const TrilinosWrappers::SparseMatrix &M, string filename );
-    	// Create matlab file with the matrix
-    	void matlab_print_matrix(const FullMatrix<double> &M, string filename );
-    	// print matlab code for matrices
-    	void print_matlab( string filename);
+
+        // Create matlab code
+        void generate_matlab_study(string filename);
+        // Write matrix to data file
+        void write_matrix(const FullMatrix<double> &M, string filename );
+        // Write matrix to data file
+        void write_matrix(const TrilinosWrappers::SparseMatrix &M, string filename );
     	// Setup degree of freedom (DOF) of the system.
         void setup_dofs ();
         // Assemble the system
@@ -117,9 +117,8 @@ namespace Elastic
         void surface_values ();
         
         const unsigned int						degree;
-        std::vector<unsigned int>				boundary;
-        
         Triangulation<dim>						triangulation;
+
         FESystem<dim>							fe;
         DoFHandler<dim>							dof_handler;
         
@@ -146,15 +145,14 @@ Elastic::ElasticProblem<dim>::ElasticProblem (const unsigned int degree, paramet
   info_0(std::cout, _par->info == 0),
   info_1(std::cout, _par->info == 1),
   info_2(std::cout, _par->info == 2),
+  computing_timer (info_0,
+                   TimerOutput::summary,
+                   TimerOutput::wall_times),
   degree (degree),
   triangulation (Triangulation<dim>::maximum_smoothing),
   fe (FE_Q<dim>(degree+1), dim,
       FE_Q<dim>(degree), 1),
-  dof_handler (triangulation),
-  boundary (4, 0),
-  computing_timer (info_0,
-                   TimerOutput::summary,
-                   TimerOutput::wall_times)
+  dof_handler (triangulation)
 {
 //    info_0.set_condition(par->info == 0);
 //    info_1.set_condition(par->info == 1);
@@ -535,15 +533,13 @@ Elastic::ElasticProblem<dim>::assemble_system ()
 		// end assembly A preconditioner
 		
 		// printing local matrices
-		if(par->print_local && first && (par->POISSON == 0.2) ){ // print_local, first
+        if(par->print_local && first && (par->POISSON == 0.2) ){ // print_local, first
 			string name = "l_m";
-			//name += Utilities::int_to_string (counter, 2);
-			matlab_print_matrix(cell_matrix,name);
+            write_matrix(cell_matrix,name);
 			
 			name = "l_p";
-			//name += Utilities::int_to_string (counter, 2);
-			matlab_print_matrix(cell_precond,name);
-		}
+            write_matrix(cell_precond,name);
+        }
 		
 		// local-to-global
 		cell->get_dof_indices (local_dof_indices);
@@ -757,20 +753,19 @@ Elastic::ElasticProblem<dim>::run ()
 										system_rhs,
 										false);
 	
-	if(par->print_matrices ){ // define print_data
-		// printing matrices in matlab form, after Dirichlet B.C
+    if(par->print_matrices ){ // define print_data
 		std::cout << "   ** Printing matrices in Matlab form **" << std::endl << std::flush;
 		
-		matlab_print_matrix(system_matrix.block(0,0),"a00");
-		matlab_print_matrix(system_matrix.block(0,1),"a01");
-		matlab_print_matrix(system_matrix.block(1,0),"a10");
-		matlab_print_matrix(system_matrix.block(1,1),"a11");
+        write_matrix(system_matrix.block(0,0),"a00");
+        write_matrix(system_matrix.block(0,1),"a01");
+        write_matrix(system_matrix.block(1,0),"a10");
+        write_matrix(system_matrix.block(1,1),"a11");
 		
-		matlab_print_matrix(system_preconditioner.block(0,0),"p00");
-		matlab_print_matrix(system_preconditioner.block(0,1),"p01");
-		matlab_print_matrix(system_preconditioner.block(1,0),"p10");
-		matlab_print_matrix(system_preconditioner.block(1,1),"p11");
-	}
+        write_matrix(system_preconditioner.block(0,0),"p00");
+        write_matrix(system_preconditioner.block(0,1),"p01");
+        write_matrix(system_preconditioner.block(1,0),"p10");
+        write_matrix(system_preconditioner.block(1,1),"p11");
+    }
 	
 	int inv_iter = 0, schur_iter = 0;
 	if(par->solve){
@@ -781,7 +776,7 @@ Elastic::ElasticProblem<dim>::run ()
         computing_timer.exit_section("System solver");
 		
 		// printing solver info
-		for(int i = 0; i < par->inv_iterations.size(); i++){
+        for(unsigned int i = 0; i < par->inv_iterations.size(); i++){
 			inv_iter   += par->inv_iterations[i];
 			schur_iter += par->schur_iterations[i];
 		}
@@ -798,9 +793,9 @@ Elastic::ElasticProblem<dim>::run ()
 	}
 	
 	// printing: matrices, par->info
-	if(par->POISSON == 0.2 ){
-		print_matlab("gia");
-	}
+    if(par->POISSON == 0.2 ){
+        generate_matlab_study("gia2");
+    }
 	if(par->solve){
 		int tempSpace = 15;
         info_0   << "GMRES iterations: system(<inv>,<schur>) = "
@@ -872,214 +867,214 @@ Elastic::ElasticProblem<dim>::surface_values () {
            << std::endl;
 }
 
+// Change string to uppercase
+template <int dim>
+std::string
+Elastic::ElasticProblem<dim>::to_upper(const std::string str){
+    std::string out_str(str);
+    for (int i = 0; i < str.size(); ++i)
+        out_str[i] = toupper(str[i]);
+    return out_str;
+}
+
+// Create matlab code
 template <int dim>
 void
-Elastic::ElasticProblem<dim>::print_matlab( string filename){
-	//Printing in matlab form
-	string extension = filename + ".m";
-	ofstream myfile(extension.c_str());
-	
-	int figure = 1;
-	
-	if(!myfile.is_open()){
-		cout << "Print_matlab: Unable to open file...";
-		return;
-	}
+Elastic::ElasticProblem<dim>::generate_matlab_study(string filename){
+    //Printing in matlab form
+    string extension = filename + ".m";
+    ofstream myfile(extension.c_str());
 
-	myfile << "close all;clear;" << endl;
-	
-	if(par->print_matrices){
-		myfile << "data_a00" << endl;
-		myfile << "data_a01" << endl;
-		myfile << "data_a10" << endl;
-		myfile << "data_a11" << endl;
-		myfile << "" << endl;
-		
-		myfile << "A = [A00 A01; A10 A11];" << endl;
-		myfile << "" << endl;
-		
-		myfile << "data_p00" << endl;
-		myfile << "data_p01" << endl;
-		myfile << "data_p10" << endl;
-		myfile << "data_p11" << endl;
-		myfile << "" << endl;
-		
-		myfile << "P = [P00 P01; P10 P11];" << endl;
-		myfile << "" << endl;
-		
-		myfile << "Ainv = inv(A00);" << endl;
-		myfile << "S = A11 - A10*Ainv*A01;" << endl;
-		
-		myfile << "figure(" << figure << ");mesh(S);title('Full Schur');" << endl;
-		figure++;
-		
-		myfile << "figure(" << figure << ");mesh(P11);title('Element-by-element Schur');" << endl;
-		figure++;
-		
-		myfile << "data_l_m;" << endl;
-		myfile << "data_l_p;" << endl;
-		//myfile << "data_l_o;" << endl;
-		//myfile << "data_l_po;" << endl;
-		myfile << "" << endl;
-		
-		myfile	<< "eigS=eig(S);\n"
-				<< "eigSe=eig(P11);\n"
-				<< "eigM=eig(A11);\n\n"
-				<< "r_part=[real(eigS) real(eigSe) real(eigM)];\n"
-				<< "i_part=[imag(eigS) imag(eigSe) imag(eigM)];\n"
-				<< "figure("<< figure <<");plot(r_part)\n";
-		figure++;
-		
-		myfile << "figure(" << figure << ");plot(r_part);title('Quality comparison of $S,\hat S$ and $C$','Interpreter','latex');"<<endl;
-		figure++;
+    int figure = 1;
 
-		myfile	<< "legend('$S$','$\hat S$','$C$','Interpreter','latex');\n"
-				<< "h1 = legend;\n"
-				<< "set(h1, 'interpreter', 'latex')\n"
-				<< "figure("<< figure <<");plot(i_part);title('Quality comparison of $S,\hat S$ and $C$','Interpreter','latex');"<<endl;
-		figure++;
-        
-	}
-	
-	std::stringstream xplot;
-	xplot << "set(gca,'XTick',";
-	
-	if(par->cases() == 2)
-		xplot << "-4000:500:0)\nxlabel('y(xt) ";
-	else if(par->cases() == 1)
-		xplot << "0:5000:"<<par->x2*1e4<<")\nxlabel('x(y=0) ";
-	else if(par->cases() == 0)
-		xplot << "0:2000:"<<par->x2*1e4<<")\nxlabel('x(y=0) ";
-	
-	xplot << "in (Km)');\n";
-	
-	myfile	<< "surface_values0_2;\n"
-			<< "surface_values0_3;\n"
-			<< "surface_values0_4;\n"
-			<< "surface_values0_5;\n\n"
-			<< "x = sol0_2(:,1);\n"
-			<< "y = sol0_2(:,2);\n"
-			<< "domain = " 
-			<< ((par->cases() == 2)?"y(:,1)":"x(:,1)") << ";\n\n";
+    if(!myfile.is_open()){
+        cout << "Print_matlab: Unable to open file...";
+        return;
+    }
 
-	myfile	<< "horizontal = [sol0_2(:,3) sol0_3(:,3) sol0_4(:,3) sol0_5(:,3)];\n"
-			<< "vertical   = [sol0_2(:,4) sol0_3(:,4) sol0_4(:,4) sol0_5(:,4)];\n"
-			<< "pressure   = [sol0_2(:,5) sol0_3(:,5) sol0_4(:,5) sol0_5(:,5)];\n\n";
+    myfile << "close all;clear;" << endl;
 
-	myfile	<< "% Change default axes fonts.\n"
-			<< "set(0,'DefaultAxesFontName', 'Times New Roman');\n"
-			<< "set(0,'DefaultAxesFontSize', 16);\n\n";
+    if(par->print_matrices){
+        myfile << "a00;" << endl;
+        myfile << "a01;" << endl;
+        myfile << "a10;" << endl;
+        myfile << "a11;" << endl;
+        myfile << "" << endl;
 
-	myfile	<< "% Change default text fonts.\n"
-			<< "set(0,'DefaultTextFontname', 'Times New Roman');\n"
-			<< "set(0,'DefaultTextFontSize', 16);\n\n";
+        myfile << "A = [data_a00 data_a01; data_a10 data_a11];" << endl;
+        myfile << "" << endl;
 
-	myfile	<< "figure("<<figure<<"); plot(domain,horizontal(:,1:4));%title('horizontal');\n"
-			<< xplot.str() 
-			<< "ylabel('Horizontal displacement in (m)');\n"
-			<< "hleg1 = legend('\\nu=0.2','\\nu=0.3','\\nu=0.4','\\nu=0.5', 'Location','SouthEast');\n"
-			<< "grid on\n"
-			<< "%set(gca, 'GridLineStyle', '-');\n" << endl;
-	figure++;
-	
-	myfile	<< "figure("<< figure <<"); plot(domain,  vertical(:,1:4));%title('vertical');\n"
-			<< xplot.str()
-			<< "ylabel('Vertical displacement in (m)');\n"
-			<< "hleg1 = legend('\\nu=0.2','\\nu=0.3','\\nu=0.4','\\nu=0.5', 'Location','SouthEast');\n"
-			<< "grid on\n"
-			<< "%set(gca, 'GridLineStyle', '-');\n\n" << endl;
-	figure++;
-	
-	myfile	<< "% analytical constants, alpha = rho_i*h/rho_r, delta = (1+v)(1-2v)/(E(1-v)), 1/(2mu + lambda) = (1+v)(1-2v)/(E(1-v))\n"
-			<< "v = 0.2;E = " << (par->S*par->YOUNG) << "; g = " << par->g0 << "; h = "<< par->h <<";\n"
-			<< "rho_i = "<< par->rho_i << "; rho_r = " << par->rho_r << ";\n"
-			<< "alpha = "<< par->alpha <<";\n"
-			<< "beta  = "<< par->beta <<";\n"
-			<< "delta = (1+v)*(1-2*v)/(E*(1-v));\n"
-			<< "gamma = "<< par->gamma <<";\n";
+        myfile << "p00;" << endl;
+        myfile << "p01;" << endl;
+        myfile << "p10;" << endl;
+        myfile << "p11;" << endl;
+        myfile << "" << endl;
 
-	myfile	<< "yb    = " << (par->L*par->y1) << ";\n\n"
-			<< "A1 = (1+v)*(1-2*v)/(E*(1-v))*g*rho_i*h; % rho_i\n\n"
-			<< "mu     = E/(2*(1+v));\n"
-			<< "lambda = E*v/((1+v)*(1-2*v));\n";
-	
-	myfile	<< "y = 1000*domain;%yb:abs(yb)/1000:0.0;\n"
-			<< "v1 = A1.*(yb-y);\n"
-			<< "v2 = alpha.*(exp(rho_r*g*delta.*yb)-exp(rho_r*g*delta.*y));\n"
-			<< "p = -rho_i*g*h*gamma;\n\n";
+        myfile << "P = [data_p00 data_p01; data_p10 data_p11];" << endl;
+        myfile << "" << endl;
 
-	myfile	<< "%figure("<<figure<<");plot(y,v1,y,v2);\n" << endl;
-	figure++;
+        myfile << "Ainv = inv(data_a00);" << endl;
+        myfile << "S = data_a11 - data_a10*Ainv*data_a01;" << endl;
 
-	myfile	<< "p1 = sol0_2(:,4)\n;"
-			<< "%figure("<<figure<<");plot(domain,p1,domain,p);\n"
-			<< endl;
-	
-	myfile.close();
+        myfile << "figure(" << figure << ");mesh(S);title('Full Schur');" << endl;
+        figure++;
+
+        myfile << "figure(" << figure << ");mesh(data_p11);title('Element-by-element Schur');" << endl;
+        figure++;
+
+        myfile << "l_m;" << endl;
+        myfile << "l_p;" << endl;
+        myfile << "" << endl;
+
+        myfile	<< "eigS=eig(S);" << endl
+                << "eigSe=eig(data_p11);" << endl
+                << "eigM=eig(data_a11);" << endl
+                << endl
+                << "r_part=[real(eigS) real(eigSe) real(eigM)];" << endl
+                << "i_part=[imag(eigS) imag(eigSe) imag(eigM)];" << endl
+                << "figure("<< figure <<");plot(r_part)" << endl;
+        figure++;
+
+        myfile << "figure(" << figure << ");plot(r_part);title('Quality comparison of S,S_HAT and C');" << endl;
+        figure++;
+
+        myfile	<< "legend('S','S_HAT','C');" << endl
+                << "h1 = legend;" << endl
+                << "set(h1)" << endl
+                << "figure("<< figure <<");plot(i_part);title('Quality comparison of S,S_HAT and C');" << endl;
+        figure++;
+
+    }
+
+    std::stringstream xplot;
+    xplot << "set(gca,'XTick',";
+
+    if(par->cases() == 2){
+        xplot << "-4000:500:0)" << endl
+              << "xlabel('y(xt) ";
+    }
+    else if(par->cases() == 1){
+        xplot << "0:5000:"<<par->x2*1e4<<")" << endl
+              << "xlabel('x(y=0) ";
+    }
+    else if(par->cases() == 0){
+        xplot << "0:2000:"<<par->x2*1e4<<")" << endl
+              << "xlabel('x(y=0) ";
+    }
+
+    xplot << "in (Km)');" << endl;
+
+    myfile	<< "surface_values0_2;" << endl
+            << "surface_values0_3;" << endl
+            << "surface_values0_4;" << endl
+            << "surface_values0_5;" << endl
+            << "x = sol0_2(:,1);" << endl
+            << "y = sol0_2(:,2);" << endl
+            << "domain = "
+            << ((par->cases() == 2)?"y(:,1)":"x(:,1)") << ";" << endl;
+
+    myfile	<< "horizontal = [sol0_2(:,3) sol0_3(:,3) sol0_4(:,3) sol0_5(:,3)];" << endl
+            << "vertical   = [sol0_2(:,4) sol0_3(:,4) sol0_4(:,4) sol0_5(:,4)];" << endl
+            << "pressure   = [sol0_2(:,5) sol0_3(:,5) sol0_4(:,5) sol0_5(:,5)];" << endl;
+
+    myfile	<< "% Change default axes fonts." << endl
+            << "set(0,'DefaultAxesFontName', 'Times New Roman');" << endl
+            << "set(0,'DefaultAxesFontSize', 16);" << endl;
+
+    myfile	<< "% Change default text fonts." << endl
+            << "set(0,'DefaultTextFontname', 'Times New Roman');" << endl
+            << "set(0,'DefaultTextFontSize', 16);" << endl;
+
+    myfile	<< "figure("<<figure<<"); plot(domain,horizontal(:,1:4));%title('horizontal');" << endl
+            << xplot.str()
+            << "ylabel('Horizontal displacement in (m)');" << endl
+            << "hleg1 = legend('\\nu=0.2','\\nu=0.3','\\nu=0.4','\\nu=0.5', 'Location','SouthEast');" << endl
+            << "grid on" << endl
+            << "%set(gca, 'GridLineStyle', '-');" << endl;
+    figure++;
+
+    myfile	<< "figure("<< figure <<"); plot(domain,  vertical(:,1:4));%title('vertical');" << endl
+            << xplot.str()
+            << "ylabel('Vertical displacement in (m)');" << endl
+            << "hleg1 = legend('\\nu=0.2','\\nu=0.3','\\nu=0.4','\\nu=0.5', 'Location','SouthEast');" << endl
+            << "grid on" << endl
+            << "%set(gca, 'GridLineStyle', '-');" << endl;
+    figure++;
+
+    myfile	<< "% analytical constants, alpha = rho_i*h/rho_r, delta = (1+v)(1-2v)/(E(1-v)), 1/(2mu + lambda) = (1+v)(1-2v)/(E(1-v))" << endl
+            << "v = 0.2;E = " << (par->S*par->YOUNG) << "; g = " << par->g0 << "; h = "<< par->h <<";" << endl
+            << "rho_i = "<< par->rho_i << "; rho_r = " << par->rho_r << ";" << endl
+            << "alpha = "<< par->alpha <<";" << endl
+            << "beta  = "<< par->beta <<";" << endl
+            << "delta = (1+v)*(1-2*v)/(E*(1-v));" << endl
+            << "gamma = "<< par->gamma <<";" << endl;
+
+    myfile	<< "yb    = " << (par->L*par->y1) << ";" << endl
+            << "A1 = (1+v)*(1-2*v)/(E*(1-v))*g*rho_i*h; % rho_i" << endl
+            << "mu     = E/(2*(1+v));" << endl
+            << "lambda = E*v/((1+v)*(1-2*v));" << endl;
+
+    myfile	<< "y = 1000*domain;%yb:abs(yb)/1000:0.0;" << endl
+            << "v1 = A1.*(yb-y);" << endl
+            << "v2 = alpha.*(exp(rho_r*g*delta.*yb)-exp(rho_r*g*delta.*y));" << endl
+            << "p = -rho_i*g*h*gamma;" << endl;
+
+    myfile	<< "%figure("<<figure<<");plot(y,v1,y,v2);" << endl;
+    figure++;
+
+    myfile	<< "p1 = sol0_2(:,4);" << endl
+            << "%figure("<<figure<<");plot(domain,p1,domain,p);" << endl
+            << endl;
+
+    myfile.close();
 }
 
 // Create a matlab file with matrices
 template <int dim>
 void
-Elastic::ElasticProblem<dim>::matlab_print_matrix(const TrilinosWrappers::SparseMatrix &M, string filename ){
-	//Printing in matlab form
-	string extension = "data_" + filename + ".m";
-	string up_filename = to_upper(filename);
-	
-	ofstream myfile(extension.c_str());
-	
-	if (!myfile.is_open()){
-		cout << "Unable to open file";
-		return;
-	}
-	myfile << up_filename.c_str() << " = [" << endl;
-	
-	for(unsigned int i = 0;i < M.m();i++){
-		for(unsigned int j = 0;j < M.n();j++){
-			
-			myfile << M.el(i,j) << "\t";
-		}
-		myfile << ";" << endl;
-	}
-	myfile << "];" << endl;
-	myfile << up_filename.c_str() << " = sparse(" << up_filename.c_str() << ");" << endl;
-	myfile.close();
+Elastic::ElasticProblem<dim>::write_matrix(const TrilinosWrappers::SparseMatrix &M, string filename ){
+    int PSC = 13;
+    //Printing in matlab form
+    string name = "data_" + filename + ".dat";
+    std::ofstream matrix (name);
+    matrix << setprecision(PSC);//std::setprecision(std::numeric_limits<double>::digits10);
+    M.print(matrix);
+    matrix.close();
+
+    string extension = filename + ".m";
+    string mName = "data_" + filename;
+    ofstream myfile(extension.c_str());
+    myfile << "% Reading output matrix from deal.II into matlab" << endl;
+    myfile << "fid = fopen('" << name << "', 'rt');" << endl;
+    myfile << "[m n] = fscanf(fid, '(%d,%d) %e\\n'); % has the particular format" << endl;
+    myfile << "% reorganizes the data" << endl;
+    myfile << "count = 1;" << endl;
+    myfile << "for k = [1:3:n]" << endl;
+    myfile << "    I(count) = m(k)+1;" << endl;
+    myfile << "    J(count) = m(k+1)+1;" << endl;
+    myfile << "    v(count) = m(k+2);" << endl;
+    myfile << "    count = count + 1;" << endl;
+    myfile << "end" << endl;
+    myfile << "fclose(fid);" << endl;
+    myfile << "% create a sparse stiffness matrix with the input" << endl;
+    myfile << mName << "=sparse(I,J,v);" << endl;
+    myfile.close();
 }
 
 template <int dim>
 void
-Elastic::ElasticProblem<dim>::matlab_print_matrix(const FullMatrix<double> &M, string filename ){
-	//Printing in matlab form
-	string extension = "data_" + filename + ".m";
-	to_upper(filename);
-	
-	ofstream myfile(extension.c_str());
-	
-	if (!myfile.is_open()){
-		cout << "Unable to open file";
-		return;
-	}
-	myfile << filename.c_str() << " = [" << endl;
-	
-	for(unsigned int i = 0;i < M.m();i++){
-		for(unsigned int j = 0;j < M.n();j++){
-			
-			myfile << M(i,j) << "\t";
-		}
-		myfile << ";" << endl;
-	}
-	myfile << "];" << endl;
-	myfile.close();
-}
-
-// Change string to uppercase
-template <int dim>
-std::string
-Elastic::ElasticProblem<dim>::to_upper(const std::string str){
-	std::string out_str(str);
-	for (int i = 0; i < str.size(); ++i) 
-		out_str[i] = toupper(str[i]);
-	return out_str;
+Elastic::ElasticProblem<dim>::write_matrix(const FullMatrix<double> &M, string filename ){
+    //Printing in matlab form
+    string name = "data_" + filename + ".dat";
+    std::ofstream matrix (name);
+    M.print(matrix,10);
+    matrix.close();
+    // in Matlab
+    string extension = filename + ".m";
+    ofstream myfile(extension.c_str());
+    myfile << "% Reading output matrix from deal.II into matlab" << endl;
+    myfile << "load " << name << endl;
+    myfile.close();
 }
 
 /*

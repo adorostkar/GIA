@@ -556,12 +556,6 @@ void parameters::parse_command_line(int argc, char* argv[]){
 			case 'm':   // -m or --matlab
 				print_local    = 1;
 				print_matrices = 1;
-				// limiting the refinements for printing matrices as it becomes extremely slow when ref > 3
-				if(flag){
-					if(refinements > 4) refinements = 4;
-				}else{
-					if(refinements > 1) refinements = 1;
-				}
 				break;
 			case 'p':   // -p or --poisson
 				POISSON = atof(optarg);

@@ -72,7 +72,7 @@ namespace Elastic
 	class ExactSolution : public Function<dim>
 	{
     public:
-		ExactSolution (parameters *_par) : par(_par), Function<dim>(dim+1) {}
+        ExactSolution (parameters *_par) : Function<dim>(dim+1), par(_par) {}
 		
 		virtual void vector_value (const Point<dim> &p,
 								   Vector<double>   &value) const;
