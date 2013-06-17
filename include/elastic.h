@@ -39,7 +39,6 @@
 #include <deal.II/numerics/matrix_tools.h>
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/numerics/error_estimator.h>
-//#include <deal.II/numerics/vector_tools.h> // replaced by: <deal.II/numerics/vectors.h>
 
 #include <deal.II/lac/trilinos_sparse_matrix.h>
 #include <deal.II/lac/trilinos_block_sparse_matrix.h>
@@ -521,24 +520,15 @@ Elastic::ElasticProblem<dim>::assemble_system ()
                 }
             }
         }
-//      for (unsigned int i=0; i< dim_u; ++i){// shape index i
-//			for (unsigned int j=0; j < dim_u; ++j){
-//				if(par->precond == 0){
-//					cell_precond(l_u[i],l_u[j]) = l_Adiag(i,j);
-//				}else if(par->precond == 1){
-//					cell_precond(l_u[i],l_u[j]) = l_A(i,j);
-//				}
-//			}
-//		}
 		// end assembly A preconditioner
 		
 		// printing local matrices
         if(par->print_local && first && (par->POISSON == 0.2) ){ // print_local, first
-			string name = "l_m";
-            write_matrix(cell_matrix,name);
+//			string name = "l_m";
+            write_matrix(cell_matrix,"l_m");//name);
 			
-			name = "l_p";
-            write_matrix(cell_precond,name);
+//			name = "l_p";
+            write_matrix(cell_precond,"l_p");//name);
         }
 		
 		// local-to-global
@@ -702,17 +692,19 @@ Elastic::ElasticProblem<dim>::run ()
 
 	setup_dofs ();
 
-    info_0 << "   Assembling ... " << std::endl;
+    info_0 << "   Assembling ... ";
 
     computing_timer.enter_section("Assembling");
     assemble_system ();
     computing_timer.exit_section("Assembling");
-	
-    info_0 << "   AMG preconditioners ... " << std::endl;
 
+    info_0 << " DONE" << std::endl;
+	
+    info_0 << "   AMG preconditioners ... ";
     computing_timer.enter_section("AMG preconditioners");
 	setup_AMG ();
     computing_timer.exit_section("AMG preconditioners");
+    info_0 << " DONE" << std::endl;
 	
 	// applying the Dirichlet BC
 	
@@ -769,11 +761,12 @@ Elastic::ElasticProblem<dim>::run ()
 	
 	int inv_iter = 0, schur_iter = 0;
 	if(par->solve){
-        info_0 << "   system solver ... " << std::endl;
 
+        info_0 << "   system solver ... ";
         computing_timer.enter_section("System solver");
         solve ();
         computing_timer.exit_section("System solver");
+        info_0 << " DONE" << std::endl;
 		
 		// printing solver info
         for(unsigned int i = 0; i < par->inv_iterations.size(); i++){
@@ -794,7 +787,7 @@ Elastic::ElasticProblem<dim>::run ()
 	
 	// printing: matrices, par->info
     if(par->POISSON == 0.2 ){
-        generate_matlab_study("gia2");
+        generate_matlab_study("gia");
     }
 	if(par->solve){
 		int tempSpace = 15;
