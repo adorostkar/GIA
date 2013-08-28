@@ -249,7 +249,7 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
             n_couplings = dof_handler.max_couplings_between_dofs();
 	
 	sparsity_pattern.reinit (2,2);
-	sparsity_pattern.block(0,0).reinit (n_u, n_u, n_couplings);
+    sparsity_pattern.block(0,0).reinit (n_u, n_u, n_couplings);
 	sparsity_pattern.block(1,0).reinit (n_p, n_u, n_couplings);
 	sparsity_pattern.block(0,1).reinit (n_u, n_p, n_couplings);
 	sparsity_pattern.block(1,1).reinit (n_p, n_p, n_couplings);
@@ -567,8 +567,8 @@ Elastic::ElasticProblem<dim>::setup_AMG ()
     = std_cxx1x::shared_ptr<typename Preconditioner::schur>(new typename Preconditioner::schur());
 	
 	std::vector<std::vector<bool> > constant_modes;
-	std::vector<bool>  displacement_components (dim,true);
-	//displacement_components[dim] = false;
+    std::vector<bool>  displacement_components (dim+1,true);
+    displacement_components[dim] = false;
     DoFTools::extract_constant_modes (dof_handler,
                                       displacement_components,
 									  constant_modes);
@@ -599,22 +599,22 @@ template <int dim>
 void
 Elastic::ElasticProblem<dim>::solve ()
 {
-	
+
 	const BlockSchurPreconditioner<typename Preconditioner::inner, // A, schur
 									typename Preconditioner::schur>
     preconditioner( system_preconditioner, *A_preconditioner, *S_preconditioner, par); // system_matrix
-    
+
 	SolverControl solver_control (system_matrix.m(),
 								  par->TOL*system_rhs.l2_norm());
-    
+
 	SolverGMRES<TrilinosWrappers::BlockVector>
 	solver (solver_control,
             SolverGMRES<TrilinosWrappers::BlockVector >::AdditionalData(100));
-	
+
 	solver.solve(system_matrix, solution, system_rhs, preconditioner);
-	
+
 	par->system_iter = solver_control.last_step();
-	deallog << "\t\tSchur " << par->system_iter << std::endl;
+    deallog << "\t\tSchur " << par->system_iter << std::endl;
 }
 
 
@@ -712,26 +712,26 @@ Elastic::ElasticProblem<dim>::run ()
 	
 	ns_mask[0] = true;
 	ns_mask[1] = true;
-	ns_mask[2] = false;
-	
+    ns_mask[2] = false;
+
 	std::map<unsigned int,double> boundary_values;
-	VectorTools::interpolate_boundary_values (dof_handler,
-											  NO_SLIP,
-											  ZeroFunction<dim>(),
+    VectorTools::interpolate_boundary_values (dof_handler,
+                                              NO_SLIP,
+                                              ZeroFunction<dim>(3),
 											  boundary_values,
-											  ns_mask);
+                                              ns_mask);
 	
 	std::vector<bool> vs_mask (dim+1, true); // V_SLIP
-	
+
 	vs_mask[0] = true;
 	vs_mask[1] = false;
 	vs_mask[2] = false;
 	
 	VectorTools::interpolate_boundary_values (dof_handler,
-											  V_SLIP,
-											  ZeroFunction<dim>(),
+                                              V_SLIP,
+                                              ZeroFunction<dim>(3),
 											  boundary_values,
-											  vs_mask);
+                                              vs_mask);
 	
 	MatrixTools::apply_boundary_values (boundary_values,
 										system_preconditioner,
@@ -825,7 +825,7 @@ Elastic::ElasticProblem<dim>::surface_values () {
 	std::ofstream detector_data(filename.str().c_str());
 	std::vector<Point<dim> > detector_locations;
 	
-	Vector<double> value;
+    Vector<double> value(3);
 	
 	switch (par->cases()){
 		case 2: // uniform load
