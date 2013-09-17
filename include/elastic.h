@@ -552,7 +552,45 @@ Elastic::ElasticProblem<dim>::assemble_system ()
 		
 		first = false;
 		counter++;
-	} // end cell
+    } // end cell
+
+    // applying the Dirichlet BC
+
+    std::vector<bool> ns_mask (dim+1, true); // NO_SLIP
+    std::vector<bool> vs_mask (dim+1, true); // V_SLIP
+    std::map<unsigned int,double> b_values;
+
+    ns_mask[0] = true;
+    ns_mask[1] = true;
+    ns_mask[2] = false;
+
+    vs_mask[0] = true;
+    vs_mask[1] = false;
+    vs_mask[2] = false;
+
+    VectorTools::interpolate_boundary_values (dof_handler,
+                                              NO_SLIP,
+                                              ZeroFunction<dim>(3),
+                                              b_values,
+                                              ns_mask);
+
+    VectorTools::interpolate_boundary_values (dof_handler,
+                                              V_SLIP,
+                                              ZeroFunction<dim>(3),
+                                              b_values,
+                                              vs_mask);
+
+    MatrixTools::apply_boundary_values (b_values,
+                                        system_preconditioner,
+                                        solution,
+                                        precond_rhs,
+                                        false);
+
+    MatrixTools::apply_boundary_values (b_values,
+                                        system_matrix,
+                                        solution,
+                                        system_rhs,
+                                        false);
 }
 
 // PROBLEM?? check the paper.
@@ -590,7 +628,7 @@ Elastic::ElasticProblem<dim>::setup_AMG ()
 	amg_S.higher_order_elements = false;
 	amg_S.smoother_sweeps = 2;
 	amg_S.aggregation_threshold = par->threshold;
-	
+
     // elem-by-elem Schur
     S_preconditioner->initialize( system_preconditioner.block(1,1), amg_S);
 }
@@ -690,14 +728,14 @@ Elastic::ElasticProblem<dim>::run ()
 {
 	double t_ass=0, t_solve=0, t_tot=0;
 
-	setup_dofs ();
+    computing_timer.enter_section("DOF setup");
+        setup_dofs ();
+    computing_timer.exit_section("DOF setup");
 
     info_0 << "   Assembling ... ";
-
     computing_timer.enter_section("Assembling");
     assemble_system ();
     computing_timer.exit_section("Assembling");
-
     info_0 << " DONE" << std::endl;
 	
     info_0 << "   AMG preconditioners ... ";
@@ -706,44 +744,44 @@ Elastic::ElasticProblem<dim>::run ()
     computing_timer.exit_section("AMG preconditioners");
     info_0 << " DONE" << std::endl;
 	
-	// applying the Dirichlet BC
+//    // applying the Dirichlet BC
 	
-	std::vector<bool> ns_mask (dim+1, true); // NO_SLIP
+//    std::vector<bool> ns_mask (dim+1, true); // NO_SLIP
 	
-	ns_mask[0] = true;
-	ns_mask[1] = true;
-    ns_mask[2] = false;
+//    ns_mask[0] = true;
+//    ns_mask[1] = true;
+//    ns_mask[2] = false;
 
-	std::map<unsigned int,double> boundary_values;
-    VectorTools::interpolate_boundary_values (dof_handler,
-                                              NO_SLIP,
-                                              ZeroFunction<dim>(3),
-											  boundary_values,
-                                              ns_mask);
+//    std::map<unsigned int,double> boundary_values;
+//    VectorTools::interpolate_boundary_values (dof_handler,
+//                                              NO_SLIP,
+//                                              ZeroFunction<dim>(3),
+//                                              boundary_values,
+//                                              ns_mask);
 	
-	std::vector<bool> vs_mask (dim+1, true); // V_SLIP
+//    std::vector<bool> vs_mask (dim+1, true); // V_SLIP
 
-	vs_mask[0] = true;
-	vs_mask[1] = false;
-	vs_mask[2] = false;
+//    vs_mask[0] = true;
+//    vs_mask[1] = false;
+//    vs_mask[2] = false;
 	
-	VectorTools::interpolate_boundary_values (dof_handler,
-                                              V_SLIP,
-                                              ZeroFunction<dim>(3),
-											  boundary_values,
-                                              vs_mask);
+//    VectorTools::interpolate_boundary_values (dof_handler,
+//                                              V_SLIP,
+//                                              ZeroFunction<dim>(3),
+//                                              boundary_values,
+//                                              vs_mask);
 	
-	MatrixTools::apply_boundary_values (boundary_values,
-										system_preconditioner,
-										solution,
-										precond_rhs,
-										false);
+//    MatrixTools::apply_boundary_values (boundary_values,
+//                                        system_preconditioner,
+//                                        solution,
+//                                        precond_rhs,
+//                                        false);
 	
-	MatrixTools::apply_boundary_values (boundary_values,
-										system_matrix,
-										solution,
-										system_rhs,
-										false);
+//    MatrixTools::apply_boundary_values (boundary_values,
+//                                        system_matrix,
+//                                        solution,
+//                                        system_rhs,
+//                                        false);
 	
     if(par->print_matrices ){ // define print_data
 		std::cout << "   ** Printing matrices in Matlab form **" << std::endl << std::flush;
@@ -851,7 +889,9 @@ Elastic::ElasticProblem<dim>::surface_values () {
 								  solution,
 								  detector_locations[i],
 								  value);
-		detector_data << (detector_locations[i](0)*par->L/1e3) << ", " << (detector_locations[i](1)*par->L/1e3) << ", " << value(0) << ", " << value(1) << ", " << (value(2)/par->L) <<";\n";
+        detector_data << (detector_locations[i](0)*par->L/1e3) << ", "
+                      << (detector_locations[i](1)*par->L/1e3) << ", "
+                      << value(0) << ", " << value(1) << ", " << (value(2)/par->L) <<";\n";
 	}
 	detector_data << "];" << std::endl;
 	
