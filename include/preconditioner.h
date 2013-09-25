@@ -39,14 +39,15 @@ namespace Elastic
      ************** PRECONDITIONER **************
      */
 	// new code step-31
-	template <class PreconditionerA, class PreconditionerS>
+    template <class PreconditionerA0, class PreconditionerA1, class PreconditionerS>
 	class BlockSchurPreconditioner : public Subscriptor
     {
     public:
         BlockSchurPreconditioner (const TrilinosWrappers::BlockSparseMatrix     &S,
-                                  const PreconditionerA           &Apreconditioner,
-                                  const PreconditionerS           &Spreconditioner,
-                                  parameters						*_par);
+                                  const PreconditionerA0           &A0preconditioner,
+                                  const PreconditionerA1           &A1preconditioner,
+                                  const PreconditionerS            &Spreconditioner,
+                                  parameters                       *_par);
         
         void vmult (TrilinosWrappers::BlockVector       &dst,
                     const TrilinosWrappers::BlockVector &src) const;
@@ -55,8 +56,9 @@ namespace Elastic
     	// pointer to parameter object
     	parameters *par;
         const SmartPointer<const TrilinosWrappers::BlockSparseMatrix> s_matrix;
-        const PreconditionerA &a_preconditioner;
-        const PreconditionerS &s_preconditioner;
+        const PreconditionerA0 &a0_preconditioner;
+        const PreconditionerA1 &a1_preconditioner;
+        const PreconditionerS  &s_preconditioner;
         
         mutable TrilinosWrappers::Vector tmp;
     };
@@ -65,56 +67,73 @@ namespace Elastic
 /*
      ------------- IMPLEMENTATION --------------
 */
-template <class PreconditionerA, class PreconditionerS>
-Elastic::BlockSchurPreconditioner<PreconditionerA, PreconditionerS>::
+template <class PreconditionerA0, class PreconditionerA1, class PreconditionerS>
+Elastic::BlockSchurPreconditioner<PreconditionerA0, PreconditionerA1, PreconditionerS>::
 BlockSchurPreconditioner(const TrilinosWrappers::BlockSparseMatrix  &S,
-                         const PreconditionerA                      &Apreconditioner,
-                         const PreconditionerS                      &Spreconditioner,
-                         parameters									*_par)
+                         const PreconditionerA0                      &A0preconditioner,
+                         const PreconditionerA1                      &A1preconditioner,
+                         const PreconditionerS                       &Spreconditioner,
+                         parameters									 *_par)
     :
       par 					(_par),
       s_matrix				(&S),
-      a_preconditioner        (Apreconditioner),
+      a0_preconditioner        (A0preconditioner),
+      a1_preconditioner        (A1preconditioner),
       s_preconditioner        (Spreconditioner),
-      tmp                     (s_matrix->block(1,1).m())
+      tmp                     (s_matrix->block(2,2).m())
 {}
 
-template <class PreconditionerA, class PreconditionerS>
+template <class PreconditionerA0, class PreconditionerA1, class PreconditionerS>
 void
-Elastic::BlockSchurPreconditioner<PreconditionerA, PreconditionerS>::
+Elastic::BlockSchurPreconditioner<PreconditionerA0, PreconditionerA1, PreconditionerS>::
 vmult (TrilinosWrappers::BlockVector       &dst,
        const TrilinosWrappers::BlockVector &src) const
 {
 
-    // Solver control for solving the block with A^{-1}
-    SolverControl control_inv (s_matrix->block(0,0).m(),
+    // Solver for solving the block with A0^{-1}
+    SolverControl control_inv0 (s_matrix->block(0,0).m(),
                                par->InvMatPreTOL*src.block(0).l2_norm());
-    control_inv.enable_history_data ();
-    control_inv.log_history (true);
-    control_inv.log_result (true);
+    control_inv0.enable_history_data ();
+    control_inv0.log_history (true);
+    control_inv0.log_result (true);
 
     SolverGMRES<TrilinosWrappers::Vector> // SchurTOL
-            solver (control_inv, SolverGMRES<TrilinosWrappers::Vector >::AdditionalData(100));
+            solver0 (control_inv0, SolverGMRES<TrilinosWrappers::Vector >::AdditionalData(100));
 
-    // Solve the block system for A^{-1}
-    solver.solve(s_matrix->block(0,0), dst.block(0), src.block(0), a_preconditioner);
+    solver0.solve(s_matrix->block(0,0), dst.block(0), src.block(0), a0_preconditioner);
+
+    // Solve the block system for A1^{-1}
+    SolverControl control_inv1 (s_matrix->block(1,1).m(),
+                               par->InvMatPreTOL*src.block(1).l2_norm());
+    control_inv1.enable_history_data ();
+    control_inv1.log_history (true);
+    control_inv1.log_result (true);
+
+    SolverGMRES<TrilinosWrappers::Vector> // SchurTOL
+            solver1 (control_inv1, SolverGMRES<TrilinosWrappers::Vector >::AdditionalData(100));
+    solver1.solve(s_matrix->block(1,1), dst.block(1), src.block(1), a1_preconditioner);
 
     // Push number of inner iterations to solve first block.
-    par->inv_iterations.push_back(control_inv.last_step());
+    par->inv_iterations.push_back(control_inv0.last_step());// + control_inv1.last_step());
 
     // Write number of inner iterations to log file.
-    deallog << "\t\tInner " << control_inv.last_step() << ", with TOL = "<< par->InvMatPreTOL*src.block(0).l2_norm() << std::endl;
+    deallog << "\t\tInner First block" << control_inv0.last_step() << ", with TOL = "<< par->InvMatPreTOL*src.block(0).l2_norm() << std::endl;
+    deallog << "\t\tInner second block" << control_inv1.last_step() << ", with TOL = "<< par->InvMatPreTOL*src.block(1).l2_norm() << std::endl;
 
     // a_preconditioner.vmult (dst.block(0), src.block(0));
 
-    s_matrix->block(1,0).residual(tmp, dst.block(0), src.block(1));
+//    s_matrix->block(1,0).residual(tmp, dst.block(0), src.block(1));
+//    tmp *= -1;
+    s_matrix->block(2,0).residual(tmp, dst.block(0),src.block(2));
     tmp *= -1;
+    s_matrix->block(2,1).vmult_add(tmp, dst.block(1));
+
 
     if(par->one_schur_it){// Use one iteration to find Schure complement
-        s_preconditioner.vmult (dst.block(1), tmp);
+        s_preconditioner.vmult (dst.block(2), tmp);
     }
     else{
-        SolverControl control_s (s_matrix->block(1,1).m(),
+        SolverControl control_s (s_matrix->block(2,2).m(),
                                  par->SchurTOL*tmp.l2_norm());
         control_s.enable_history_data ();
         control_s.log_history (true);
@@ -123,7 +142,7 @@ vmult (TrilinosWrappers::BlockVector       &dst,
         SolverGMRES<TrilinosWrappers::Vector> // SchurTOL
                 solver (control_s, SolverGMRES<TrilinosWrappers::Vector >::AdditionalData(100));
 
-        solver.solve(s_matrix->block(1,1), dst.block(1), tmp, s_preconditioner);
+        solver.solve(s_matrix->block(2,2), dst.block(2), tmp, s_preconditioner);
 
         // Push number of inner iterations for computing Schure complement.
         par->schur_iterations.push_back(control_s.last_step());

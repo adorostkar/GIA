@@ -128,7 +128,8 @@ namespace Elastic
         TrilinosWrappers::BlockVector			solution;
         TrilinosWrappers::BlockVector			system_rhs, load, body_force, precond_rhs;
         
-        std_cxx1x::shared_ptr<typename Preconditioner::inner> A_preconditioner;
+        std_cxx1x::shared_ptr<typename Preconditioner::inner> A0_preconditioner;
+        std_cxx1x::shared_ptr<typename Preconditioner::inner> A1_preconditioner;
         std_cxx1x::shared_ptr<typename Preconditioner::schur> S_preconditioner;
         //std_cxx1x::shared_ptr<TrilinosWrappers::PreconditionAMG> A_preconditioner;
 	};
@@ -217,47 +218,60 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
     // Refine the mesh with the number of refinement in the parameters.
 	triangulation.refine_global (par->refinements);
 	
-	dof_handler.distribute_dofs (fe);
+    dof_handler.distribute_dofs (fe);
 //    DoFRenumbering::Cuthill_McKee (dof_handler); // PROBLEM?? can we use it?
-	
-    std::vector<unsigned int> block_component (dim+1,0);
-    block_component[dim] = 1;
+
+    // Number of components.
+    int n_blocks = dim+1;
+
+    std::vector<unsigned int> block_component (n_blocks,0);
+    for(int i=0; i<n_blocks; ++i)
+        block_component[i] = i;
+
+    // DOF renumbering
     DoFRenumbering::component_wise (dof_handler, block_component);
-    
-	A_preconditioner.reset ();
-	S_preconditioner.reset ();
-	
-	system_matrix.clear ();
-	system_preconditioner.clear ();
-	
-	std::vector<unsigned int> dofs_per_block (2);
-	DoFTools::count_dofs_per_block (dof_handler, dofs_per_block, block_component);
-	const unsigned int n_u = dofs_per_block[0],
-                       n_p = dofs_per_block[1];
-	
+
+    A0_preconditioner.reset ();
+    A1_preconditioner.reset ();
+    S_preconditioner.reset ();
+
+    system_matrix.clear ();
+    system_preconditioner.clear ();
+
+    std::vector<unsigned int> dofs_per_block (n_blocks);
+    DoFTools::count_dofs_per_block (dof_handler, dofs_per_block, block_component);
 
     info_0 << "   Number of active cells: "
            << triangulation.n_active_cells()
            << ", Number of degrees of freedom: "
            << dof_handler.n_dofs()
-           << " (" << n_u << '+' << n_p << ')'
-           << std::endl;
+           << " (" << dofs_per_block[0];
+    for(int i=1; i<n_blocks;++i)
+        info_0 << " + " << dofs_per_block[i];
+    info_0 << ")" << std::endl;
 
-	par->dofs << triangulation.n_active_cells() << "\t(" << n_u << '+' << n_p << ')';
-	
-	const unsigned int
+    par->dofs << triangulation.n_active_cells() << "\t(" << dofs_per_block[0];
+    for(int i=1; i<n_blocks;++i)
+        par->dofs << " + " << dofs_per_block[i];
+    par->dofs << ")" << std::endl;
+
+    const unsigned int
             n_couplings = dof_handler.max_couplings_between_dofs();
-	
-	sparsity_pattern.reinit (2,2);
-    sparsity_pattern.block(0,0).reinit (n_u, n_u, n_couplings);
-	sparsity_pattern.block(1,0).reinit (n_p, n_u, n_couplings);
-	sparsity_pattern.block(0,1).reinit (n_u, n_p, n_couplings);
-	sparsity_pattern.block(1,1).reinit (n_p, n_p, n_couplings);
-	sparsity_pattern.collect_sizes();
-	
-	DoFTools::make_sparsity_pattern (dof_handler, sparsity_pattern);
-	sparsity_pattern.compress();
-	
+
+    sparsity_pattern.reinit (n_blocks, n_blocks);
+    for(int i=0; i<n_blocks; ++i){
+        for(int j=0; j<n_blocks; ++j){
+            sparsity_pattern.block(i,j).reinit (dofs_per_block[i],
+                                                dofs_per_block[j],
+                                                n_couplings);
+        }
+    }
+
+    sparsity_pattern.collect_sizes();
+
+    DoFTools::make_sparsity_pattern (dof_handler, sparsity_pattern);
+    sparsity_pattern.compress();
+
     // Print sparsity pattern of the matrix
     if(par->print_matrices){
         std::ofstream out ("sparsity_pattern.1");
@@ -265,33 +279,28 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
     }
 
 
-	system_matrix.reinit (sparsity_pattern);
-	system_preconditioner.reinit (sparsity_pattern);
-	
-	solution.reinit (2);
-	solution.block(0).reinit (n_u);
-	solution.block(1).reinit (n_p);
-	solution.collect_sizes ();
-	
-	system_rhs.reinit (2);
-	system_rhs.block(0).reinit (n_u);
-	system_rhs.block(1).reinit (n_p);
-	system_rhs.collect_sizes ();
-	
-	precond_rhs.reinit (2);
-	precond_rhs.block(0).reinit (n_u);
-	precond_rhs.block(1).reinit (n_p);
-	precond_rhs.collect_sizes ();
-	
-	load.reinit (2);
-	load.block(0).reinit (n_u);
-	load.block(1).reinit (n_p);
-	load.collect_sizes ();
-	
-	body_force.reinit (2);
-	body_force.block(0).reinit (n_u);
-	body_force.block(1).reinit (n_p);
-	body_force.collect_sizes ();
+    system_matrix.reinit (sparsity_pattern);
+    system_preconditioner.reinit (sparsity_pattern);
+
+    solution.reinit (n_blocks);
+    system_rhs.reinit (n_blocks);
+    precond_rhs.reinit (n_blocks);
+    load.reinit (n_blocks);
+    body_force.reinit (n_blocks);
+
+    for(int i=0; i<n_blocks; ++i){
+        solution.block(i).reinit (dofs_per_block[i]);
+        system_rhs.block(i).reinit (dofs_per_block[i]);
+        precond_rhs.block(i).reinit (dofs_per_block[i]);
+        load.block(i).reinit (dofs_per_block[i]);
+        body_force.block(i).reinit (dofs_per_block[i]);
+    }
+
+    solution.collect_sizes ();
+    system_rhs.collect_sizes ();
+    precond_rhs.collect_sizes ();
+    load.collect_sizes ();
+    body_force.collect_sizes ();
 }
 
 template <int dim>
@@ -524,11 +533,8 @@ Elastic::ElasticProblem<dim>::assemble_system ()
 		
 		// printing local matrices
         if(par->print_local && first && (par->POISSON == 0.2) ){ // print_local, first
-//			string name = "l_m";
-            write_matrix(cell_matrix,"l_m");//name);
-			
-//			name = "l_p";
-            write_matrix(cell_precond,"l_p");//name);
+            write_matrix(cell_matrix,"l_m");
+            write_matrix(cell_precond,"l_p");
         }
 		
 		// local-to-global
@@ -598,39 +604,63 @@ template <int dim>
 void
 Elastic::ElasticProblem<dim>::setup_AMG ()
 {
-	A_preconditioner
+    A0_preconditioner
+    = std_cxx1x::shared_ptr<typename Preconditioner::inner>(new typename Preconditioner::inner());
+
+    A1_preconditioner
     = std_cxx1x::shared_ptr<typename Preconditioner::inner>(new typename Preconditioner::inner());
 	
 	S_preconditioner
     = std_cxx1x::shared_ptr<typename Preconditioner::schur>(new typename Preconditioner::schur());
-	
-	std::vector<std::vector<bool> > constant_modes;
-    std::vector<bool>  displacement_components (dim+1,true);
-    displacement_components[dim] = false;
+
+    std::vector<std::vector<bool> > constant_modes;
+    std::vector<bool>  displacement_components (dim+1,false);
+
+    // A00
+    displacement_components[0] = true;
     DoFTools::extract_constant_modes (dof_handler,
                                       displacement_components,
-									  constant_modes);
+                                      constant_modes);
 	
-	TrilinosWrappers::PreconditionAMG::AdditionalData amg_A;
-	amg_A.constant_modes = constant_modes;
+    TrilinosWrappers::PreconditionAMG::AdditionalData amg_A0;
+    amg_A0.constant_modes = constant_modes;
 	
-	amg_A.elliptic = true;
-	amg_A.higher_order_elements = false;
-	amg_A.smoother_sweeps = 2;
-	amg_A.aggregation_threshold = par->threshold;
+    amg_A0.elliptic = true;
+    amg_A0.higher_order_elements = false;
+    amg_A0.smoother_sweeps = 2;
+    amg_A0.aggregation_threshold = par->threshold;
 	
-    // A
-    A_preconditioner->initialize( system_preconditioner.block(0,0),amg_A);
+
+    A0_preconditioner->initialize( system_preconditioner.block(0,0),amg_A0);
+    //
+
+    //A11
+    displacement_components[0] = false;
+    displacement_components[1] = true;
+    DoFTools::extract_constant_modes (dof_handler,
+                                      displacement_components,
+                                      constant_modes);
+
+    TrilinosWrappers::PreconditionAMG::AdditionalData amg_A1;
+    amg_A1.constant_modes = constant_modes;
+
+    amg_A1.elliptic = true;
+    amg_A1.higher_order_elements = false;
+    amg_A1.smoother_sweeps = 2;
+    amg_A1.aggregation_threshold = par->threshold;
+
+    A1_preconditioner->initialize( system_preconditioner.block(1,1),amg_A1);
+    //
 	
-	TrilinosWrappers::PreconditionAMG::AdditionalData amg_S;
+    TrilinosWrappers::PreconditionAMG::AdditionalData amg_S;
 	
-	amg_S.elliptic = true;
-	amg_S.higher_order_elements = false;
-	amg_S.smoother_sweeps = 2;
-	amg_S.aggregation_threshold = par->threshold;
+    amg_S.elliptic = true;
+    amg_S.higher_order_elements = false;
+    amg_S.smoother_sweeps = 2;
+    amg_S.aggregation_threshold = par->threshold;
 
     // elem-by-elem Schur
-    S_preconditioner->initialize( system_preconditioner.block(1,1), amg_S);
+    S_preconditioner->initialize( system_preconditioner.block(2,2), amg_S);
 }
 
 template <int dim>
@@ -638,9 +668,10 @@ void
 Elastic::ElasticProblem<dim>::solve ()
 {
 
-	const BlockSchurPreconditioner<typename Preconditioner::inner, // A, schur
-									typename Preconditioner::schur>
-    preconditioner( system_preconditioner, *A_preconditioner, *S_preconditioner, par); // system_matrix
+    const BlockSchurPreconditioner<typename Preconditioner::inner, // A0, schur
+                                   typename Preconditioner::inner, // A1, schur
+                                   typename Preconditioner::schur>
+    preconditioner( system_preconditioner, *A0_preconditioner, *A1_preconditioner, *S_preconditioner, par); // system_matrix
 
 	SolverControl solver_control (system_matrix.m(),
 								  par->TOL*system_rhs.l2_norm());
