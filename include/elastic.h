@@ -744,45 +744,6 @@ Elastic::ElasticProblem<dim>::run ()
     computing_timer.exit_section("AMG preconditioners");
     info_0 << " DONE" << std::endl;
 	
-//    // applying the Dirichlet BC
-	
-//    std::vector<bool> ns_mask (dim+1, true); // NO_SLIP
-	
-//    ns_mask[0] = true;
-//    ns_mask[1] = true;
-//    ns_mask[2] = false;
-
-//    std::map<unsigned int,double> boundary_values;
-//    VectorTools::interpolate_boundary_values (dof_handler,
-//                                              NO_SLIP,
-//                                              ZeroFunction<dim>(3),
-//                                              boundary_values,
-//                                              ns_mask);
-	
-//    std::vector<bool> vs_mask (dim+1, true); // V_SLIP
-
-//    vs_mask[0] = true;
-//    vs_mask[1] = false;
-//    vs_mask[2] = false;
-	
-//    VectorTools::interpolate_boundary_values (dof_handler,
-//                                              V_SLIP,
-//                                              ZeroFunction<dim>(3),
-//                                              boundary_values,
-//                                              vs_mask);
-	
-//    MatrixTools::apply_boundary_values (boundary_values,
-//                                        system_preconditioner,
-//                                        solution,
-//                                        precond_rhs,
-//                                        false);
-	
-//    MatrixTools::apply_boundary_values (boundary_values,
-//                                        system_matrix,
-//                                        solution,
-//                                        system_rhs,
-//                                        false);
-	
     if(par->print_matrices ){ // define print_data
 		std::cout << "   ** Printing matrices in Matlab form **" << std::endl << std::flush;
 		

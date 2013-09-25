@@ -377,7 +377,7 @@ void parameters::write_Parameters(){
         ofs << "\n## Y coordinate of the top right side of the domain." << endl;
     	ofs << "y2 "			<< y2					<< endl;
 
-    	ofs << "\n## Description." << endl;
+        ofs << "\n## Width of the load(Ice)." << endl;
     	ofs << "Ix "			<< Ix					<< endl;
 
     	ofs << "\n## Thickness of ice used as load." << endl;

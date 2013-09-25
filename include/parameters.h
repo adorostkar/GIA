@@ -72,11 +72,11 @@ class parameters
 {
 public:
 	//default constructor
-	parameters(const std::string f = "vardata.dat");
+    parameters(const std::string f = "vardata.conf");
 	// If the application does not have any command line options
 	// this works the same as default constructor
 	// If no --file options is passed, the program assumes default file is used.
-	parameters(int argc, char* argv[], const std::string f = "vardata.dat");
+    parameters(int argc, char* argv[], const std::string f = "vardata.conf");
 
 	// Copy constructor
 	parameters(const parameters &pm);
