@@ -102,6 +102,8 @@ namespace Elastic
         void write_matrix(const FullMatrix<double> &M, string filename );
         // Write matrix to data file
         void write_matrix(const TrilinosWrappers::SparseMatrix &M, string filename );
+        // Write vector to data file
+        void write_vector(const TrilinosWrappers::BlockVector &V, string filename );
     	// Setup degree of freedom (DOF) of the system.
         void setup_dofs ();
         // Assemble the system
@@ -782,6 +784,8 @@ Elastic::ElasticProblem<dim>::run ()
         write_matrix(system_matrix.block(0,1),"a01");
         write_matrix(system_matrix.block(1,0),"a10");
         write_matrix(system_matrix.block(1,1),"a11");
+
+        write_vector(system_rhs,"rhs");
 		
         write_matrix(system_preconditioner.block(0,0),"p00");
         write_matrix(system_preconditioner.block(0,1),"p01");
@@ -1095,6 +1099,19 @@ Elastic::ElasticProblem<dim>::write_matrix(const TrilinosWrappers::SparseMatrix 
     matrix << setprecision(PSC);//std::setprecision(std::numeric_limits<double>::digits10);
     M.print(matrix);
     matrix.close();
+}
+
+// Create a matlab file with vectors
+template <int dim>
+void
+Elastic::ElasticProblem<dim>::write_vector(const TrilinosWrappers::BlockVector &V, string filename ){
+    int PSC = 13;
+    //Printing in matlab form
+    string name = "data_" + filename + ".dat";
+    std::ofstream vector (name);
+    vector << setprecision(PSC);//std::setprecision(std::numeric_limits<double>::digits10);
+    V.print(vector);
+    vector.close();
 }
 
 template <int dim>
