@@ -131,6 +131,7 @@ vmult (TrilinosWrappers::BlockVector       &dst,
 
     if(par->one_schur_it){// Use one iteration to find Schure complement
         s_preconditioner.vmult (dst.block(2), tmp);
+        par->schur_iterations.push_back(1);
     }
     else{
         SolverControl control_s (s_matrix->block(2,2).m(),

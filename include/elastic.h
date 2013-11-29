@@ -508,6 +508,9 @@ Elastic::ElasticProblem<dim>::assemble_system ()
 		
         l_S.triple_product 	(	l_Ainv,l_B,l_Bt,false,false, -1.0  );
 		// End Schur calculation
+
+        if(par->one_schur_it)
+            l_S.gauss_jordan();
 		
         // begin Schur assembly preconditioner
         for (unsigned int i=0; i< dim_p; ++i){// shape index i
