@@ -1098,7 +1098,7 @@ Elastic::ElasticProblem<dim>::write_matrix(const TrilinosWrappers::SparseMatrix 
     int PSC = 13;
     //Printing in matlab form
     string name = "data_" + filename + ".dat";
-    std::ofstream matrix (name);
+    std::ofstream matrix (name.c_str());
     matrix << setprecision(PSC);//std::setprecision(std::numeric_limits<double>::digits10);
     M.print(matrix);
     matrix.close();
@@ -1111,7 +1111,7 @@ Elastic::ElasticProblem<dim>::write_vector(const TrilinosWrappers::BlockVector &
     int PSC = 13;
     //Printing in matlab form
     string name = "data_" + filename + ".dat";
-    std::ofstream vector (name);
+    std::ofstream vector (name.c_str());
     vector << setprecision(PSC);//std::setprecision(std::numeric_limits<double>::digits10);
     V.print(vector);
     vector.close();
@@ -1122,7 +1122,7 @@ void
 Elastic::ElasticProblem<dim>::write_matrix(const FullMatrix<double> &M, string filename ){
     //Printing in matlab form
     string name = "data_" + filename + ".dat";
-    std::ofstream matrix (name);
+    std::ofstream matrix (name.c_str());
     M.print(matrix,10);
     matrix.close();
 }
