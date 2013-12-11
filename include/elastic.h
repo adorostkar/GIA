@@ -537,7 +537,7 @@ Elastic::ElasticProblem<dim>::assemble_system ()
 		// end assembly A preconditioner
 		
 		// printing local matrices
-        if(par->print_local && first && (par->POISSON == 0.2) ){ // print_local, first
+        if(par->print_local && first){ // print_local, first
             write_matrix(cell_matrix,"l_m");
             write_matrix(cell_precond,"l_p");
         }
@@ -782,18 +782,16 @@ Elastic::ElasticProblem<dim>::run ()
 	
     if(par->print_matrices ){ // define print_data
 		std::cout << "   ** Printing matrices in Matlab form **" << std::endl << std::flush;
-		
-        write_matrix(system_matrix.block(0,0),"a00");
-        write_matrix(system_matrix.block(0,1),"a01");
-        write_matrix(system_matrix.block(1,0),"a10");
-        write_matrix(system_matrix.block(1,1),"a11");
-
+        int n_blocks = dim+1;
+        for(int i=0; i<n_blocks; ++i){
+            for(int j=0; j<n_blocks; ++j){
+                string a = "a" + std::to_string(i) + std::to_string(j);
+                string p = "p" + std::to_string(i) + std::to_string(j);
+                write_matrix(system_matrix.block(i,j),a);
+                write_matrix(system_preconditioner.block(i,j),p);
+            }
+        }
         write_vector(system_rhs,"rhs");
-		
-        write_matrix(system_preconditioner.block(0,0),"p00");
-        write_matrix(system_preconditioner.block(0,1),"p01");
-        write_matrix(system_preconditioner.block(1,0),"p10");
-        write_matrix(system_preconditioner.block(1,1),"p11");
     }
 	
 	int inv_iter = 0, schur_iter = 0;
@@ -915,7 +913,7 @@ Elastic::ElasticProblem<dim>::generate_matlab_study(){
 
     // Generate Matlab filename
     ostringstream tempOS;
-    tempOS << "eigen" << par->str_poisson << ".m";
+    tempOS << "matrices" << par->str_poisson << ".m";
     string extension = tempOS.str().c_str();
 
     // Open file
@@ -928,50 +926,43 @@ Elastic::ElasticProblem<dim>::generate_matlab_study(){
     myfile << "close all;clear;" << endl;
 
     if(par->print_matrices){
-        myfile << "%loading data" << std::endl
-               << "data_a00 = load_sparse('data_a00.dat');" << endl
-               << "data_a01 = load_sparse('data_a01.dat');" << endl
-               << "data_a10 = load_sparse('data_a10.dat');" << endl
-               << "data_a11 = load_sparse('data_a11.dat');" << endl
-               << "data_p00 = load_sparse('data_p00.dat');" << endl
-               << "data_p01 = load_sparse('data_p01.dat');" << endl
-               << "data_p10 = load_sparse('data_p10.dat');" << endl
-               << "data_p11 = load_sparse('data_p11.dat');" << endl
-               << "load('data_l_m.dat');"                   << endl
-               << "load('data_l_p.dat');"                   << endl;
+        int n_blocks = dim+1;
+        myfile << "%loading data" << std::endl;
+        for(int i=0; i<n_blocks; ++i){
+            for(int j=0; j<n_blocks; ++j){
+                string a = "data_a" + std::to_string(i) + std::to_string(j)
+                        + " = load_sparse('data_a" + std::to_string(i) + std::to_string(j) + ".dat');";
+                string p = "data_p" + std::to_string(i) + std::to_string(j)
+                        + " = load_sparse('data_p" + std::to_string(i) + std::to_string(j) + ".dat');";
+                myfile << a << endl;
+                myfile << p << endl;
+            }
+        }
+        myfile << "load('data_l_m.dat');"  << endl
+               << "load('data_l_p.dat');"  << endl;
+//               << "load('data_rhs.dat');"   << endl;
 
-        myfile << "% Creating A and P matrices" << std::endl;
-        myfile << "A = [data_a00 data_a01; data_a10 data_a11];" << endl;
-        myfile << "P = [data_p00 data_p01; data_p10 data_p11];" << endl << endl;
+        myfile << "% Creating A and P matrices" << std::endl
+               << "A = [";
+        for(int i=0; i<n_blocks; ++i){
+            for(int j=0; j<n_blocks; ++j){
+                string a = "data_a" + std::to_string(i) + std::to_string(j) + " ";
+                myfile << a;
+            }
+            myfile << ";" << endl;
+        }
+        myfile << "];" <<endl;
 
-        myfile << "% Computing A^(-1)" << endl;
-        myfile << "Ainv = inv(data_a00);" << endl;
 
-        myfile << "% Computing exact Schure" << endl;
-        myfile << "S = data_a11 - data_a10*Ainv*data_a01;" << endl;
-
-        myfile << "figure(" << figure << "); mesh(S); title('Full Schur');" << endl;
-        figure++;
-
-        myfile << "figure(" << figure << "); mesh(full(data_p11)); title('Element-by-element Schur');" << endl;
-        figure++;
-
-        myfile	<< "eigS=eigs(S);"           << endl
-                << "eigSe=eigs(data_p11);"   << endl
-                << "eigM=eigs(data_a11);"    << endl << endl
-                << "r_part=[real(eigS) real(eigSe) real(eigM)];" << endl
-                << "i_part=[imag(eigS) imag(eigSe) imag(eigM)];" << endl
-                << "figure("<< figure <<"); plot(r_part)" << endl;
-        figure++;
-
-        myfile << "figure(" << figure << "); plot(r_part); title('Quality comparison of S,S_HAT and C');" << endl;
-        figure++;
-
-        myfile	<< "legend('S','S_HAT','C');" << endl
-                << "h1 = legend;" << endl
-                << "set(h1)" << endl
-                << "figure("<< figure <<"); plot(i_part); title('Quality comparison of S,S_HAT and C');" << endl;
-        figure++;
+        myfile << "P = [";
+        for(int i=0; i<n_blocks; ++i){
+            for(int j=0; j<n_blocks; ++j){
+                string p = "data_p" + std::to_string(i) + std::to_string(j) + " ";
+                myfile << p;
+            }
+            myfile << ";" << endl;
+        }
+        myfile << "];";
     }
     myfile.close();
 
