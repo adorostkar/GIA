@@ -60,8 +60,9 @@ const struct option long_options[] = { // An array describing valid long options
 enum boundary_Type {
 	NEUMANN = 0,
 	NO_SLIP = 1,
-	V_SLIP = 2,
-	LOAD = 3
+    V_SLIP  = 2,
+    LOAD    = 3,
+    FREE    = 4
 	};
 
 // Parameter class,
@@ -139,7 +140,7 @@ public:
     // writeback parameters to file.
 	bool						writeback;
 	
-	boundary_Type				b_up,b_left,b_right,b_bottom;
+    boundary_Type				b_ice, b_up, b_left, b_right, b_bottom;
     std::vector<unsigned int>		inv_iterations, schur_iterations;
 	
 	std::string					str_poisson;

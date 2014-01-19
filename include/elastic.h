@@ -224,8 +224,12 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
                     cell->face(f)->set_boundary_indicator(par->b_bottom);
                 // If y component of the face's center is on the top boundary,
                 // the face is on the top boundary.
-                else if (face_center[dim-1] == par->y2)
-                    cell->face(f)->set_boundary_indicator(par->b_up);
+                else if (face_center[dim-1] == par->y2){
+                    if(face_center[0] <= par->Ix)
+                        cell->face(f)->set_boundary_indicator(par->b_ice);
+                    else
+                        cell->face(f)->set_boundary_indicator(par->b_up);
+                }
             }// at boundary
         }// for faces
     
@@ -488,7 +492,7 @@ Elastic::ElasticProblem<dim>::assemble_system ()
         // Neumann Boundary conditions (Ice-Load and free surface)
         for (unsigned int face_num=0; face_num<GeometryInfo<dim>::faces_per_cell; ++face_num){
             if (cell->face(face_num)->at_boundary()
-                && (cell->face(face_num)->boundary_indicator() == par->b_up ) ){
+                && (cell->face(face_num)->boundary_indicator() == par->b_ice ) ){
                 // Update face values
                 fe_face_values.reinit (cell, face_num);
                 

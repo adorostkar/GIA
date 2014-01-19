@@ -56,6 +56,7 @@ parameters::parameters(const parameters &pm){
 	y2 = pm.y2;
 	Ix = pm.Ix;
 	h = pm.h;
+    b_ice = pm.b_ice;
 	b_up = pm.b_up;
 	b_left = pm.b_left;
 	b_right = pm.b_right;
@@ -123,6 +124,7 @@ parameters & parameters::operator=(const parameters &pm){
 	y2 = pm.y2;
 	Ix = pm.Ix;
 	h = pm.h;
+    b_ice = pm.b_ice;
 	b_up = pm.b_up;
 	b_left = pm.b_left;
 	b_right = pm.b_right;
@@ -194,8 +196,8 @@ void parameters::set_default(){
 	Ix				= 1e6;
 	h				= 2170;
 
-
-	b_up			= LOAD;
+    b_ice           = LOAD;
+    b_up			= FREE;
 	b_left			= V_SLIP;
 	b_right			= NEUMANN;
 	b_bottom		= NO_SLIP;
@@ -272,7 +274,11 @@ void parameters::read_Parameters(){
 				ifs >> Ix;
 			else if(iptSt == "h")
 				ifs >> h;
-			else if(iptSt == "b_up"){
+            else if(iptSt == "b_ice"){
+                std::string s;
+                ifs >> s;
+                b_ice = str2boundary(s);
+            }else if(iptSt == "b_up"){
 				std::string s;
 				ifs >> s;
 				b_up = str2boundary(s);
@@ -382,6 +388,9 @@ void parameters::write_Parameters(){
 
     	ofs << "\n## Thickness of ice used as load." << endl;
     	ofs << "h "				<< h 					<< endl;
+
+        ofs << "\n## Boundary type on the ice." << endl;
+        ofs << "b_ice "			<< boudary2str(b_ice)	<< endl;
 
     	ofs << "\n## Boundary type on the top wall." << endl;
     	ofs << "b_up "			<< boudary2str(b_up)	<< endl;
@@ -508,7 +517,8 @@ void parameters::parse_command_line(int argc, char* argv[]){
 				xdivisions	= 1;
 				ydivisions	= 1;
 				
-				b_up				= LOAD;
+                b_ice				= LOAD;
+                b_up				= FREE;
 				b_left				= V_SLIP;
 				b_right				= V_SLIP;
 				b_bottom			= NO_SLIP;
@@ -937,6 +947,8 @@ void parameters::print_values(){
 			<< h << endl;
 
 
+    cout << left << setw(shift_num) << setfill('.') << "Under ice boundary boundary "
+            << boudary2str(b_ice) << endl;
 	cout << left << setw(shift_num) << setfill('.') << "Upper wall boundary "
 			<< boudary2str(b_up) << endl;
 	cout << left << setw(shift_num) << setfill('.') << "Left wall boundary "
@@ -1017,6 +1029,8 @@ boundary_Type parameters::str2boundary(std::string tempSt){
 		bt = V_SLIP;
 	else if(tempSt == std::string("LOAD"))
     	bt = LOAD;
+    else if(tempSt == std::string("FREE"))
+        bt = FREE;
 
 	return bt;
 }
@@ -1036,6 +1050,9 @@ std::string parameters::boudary2str(boundary_Type bt){
 	    case LOAD:
 	    	tempSt = "LOAD";
 	    	break;
+        case FREE:
+            tempSt = "FREE";
+            break;
 	}
 	return tempSt;
 }
