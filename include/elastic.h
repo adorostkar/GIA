@@ -83,7 +83,7 @@ namespace Elastic
     class ElasticProblem
     {
     public:
-        ElasticProblem (const unsigned int degree, parameters *_par);
+    ElasticProblem (const unsigned int degree, const int _info);
         void run ();
         
     private:
@@ -144,12 +144,11 @@ namespace Elastic
  ------------- IMPLEMENTATION --------------
  */
 template <int dim>
-Elastic::ElasticProblem<dim>::ElasticProblem (const unsigned int degree, parameters *_par)
+Elastic::ElasticProblem<dim>::ElasticProblem (const unsigned int degree, const int _info)
 :
-par(_par),
-info_0(std::cout, _par->info == 0),
-info_1(std::cout, _par->info == 1),
-info_2(std::cout, _par->info == 2),
+      info_0(std::cout, _info == 0),
+      info_1(std::cout, _info == 1),
+      info_2(std::cout, _info == 2),
 computing_timer (info_0,
                  TimerOutput::summary,
                  TimerOutput::wall_times),
@@ -160,6 +159,7 @@ fe (FE_Q<dim>(degree+1), dim,
     FE_Q<dim>(degree), 1),
 dof_handler (triangulation)
 {
+    par = parameters::getInstance();
     //    info_0.set_condition(par->info == 0);
     //    info_1.set_condition(par->info == 1);
     //    info_2.set_condition(par->info == 2);
@@ -322,6 +322,7 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
     if(par->print_matrices){
         std::ofstream out ("sparsity_pattern.1");
         sparsity_pattern.print_gnuplot (out);
+        out.close();
     }
     
     
@@ -402,12 +403,12 @@ Elastic::ElasticProblem<dim>::assemble_system ()
     
     std::vector<unsigned int> local_dof_indices (dofs_per_cell);
     
-    const RightHandSide<dim>			right_hand_side(par);
-    const BoundaryValues<dim>			boundaries(par);
+    const RightHandSide<dim>			right_hand_side;
+    const BoundaryValues<dim>			boundaries;
     std::vector<Vector<double> >		rhs_values (n_q_points, Vector<double>(dim+1));
     std::vector<Vector<double> >		boundary_values (n_face_q_points, Vector<double>(dim+1));
     
-    Coefficients<dim> 				  	 coeff(par->YOUNG,par->POISSON, par);
+    Coefficients<dim> 				  	 coeff(par->YOUNG,par->POISSON);
     std::vector<double>     		  	 mu_values (n_q_points);
     std::vector<double>     		  	 beta_values (n_q_points);	// mu^2/alpha
     
@@ -678,7 +679,7 @@ Elastic::ElasticProblem<dim>::solve ()
     const BlockSchurPreconditioner<typename Preconditioner::inner, // A0, schur
     typename Preconditioner::inner, // A1, schur
     typename Preconditioner::schur>
-    preconditioner( system_preconditioner, *A0_preconditioner, *A1_preconditioner, *S_preconditioner, par); // system_matrix
+            preconditioner( system_preconditioner, *A0_preconditioner, *A1_preconditioner, *S_preconditioner); // system_matrix
     
     SolverControl solver_control (system_matrix.m(),
                                   par->TOL*system_rhs.l2_norm());
@@ -703,7 +704,7 @@ Elastic::ElasticProblem<dim>::compute_errors () const
     const ComponentSelectFunction<dim>
     velocity_mask(std::make_pair(0, dim), dim+1);
     
-    ExactSolution<dim> exact_solution(par);
+    ExactSolution<dim> exact_solution;
     Vector<double> cellwise_errors (triangulation.n_active_cells());
     
     

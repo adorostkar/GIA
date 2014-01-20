@@ -72,17 +72,9 @@ enum boundary_Type {
 class parameters
 {
 public:
-	//default constructor
-    parameters(const std::string f = "vardata.conf");
-	// If the application does not have any command line options
-	// this works the same as default constructor
-	// If no --file options is passed, the program assumes default file is used.
-    parameters(int argc, char* argv[], const std::string f = "vardata.conf");
-
-	// Copy constructor
-	parameters(const parameters &pm);
-    
-    parameters & operator=(const parameters &pm);
+    ~parameters();
+    static parameters* getInstance();
+    static parameters* getInstance(int _argc, char *_argv[]);
 
 	// This method reads the parameters
 	// from the file(if no value is given, defaults will be used)
@@ -147,6 +139,22 @@ public:
 	std::stringstream			dofs;
 private:
 	bool						verbose; // Verbose parameter set
+    // Problem case number. This can only be retrieved and can't be changed
+    // during runtime.
+    int                         cas;
+
+    // Instance flag
+    static bool instanceFlag;
+    // Instance
+    static parameters *singlton;
+
+    //default constructor
+    parameters(const std::string f = "vardata.conf");
+    // If the application does not have any command line options
+    // this works the same as default constructor
+    // If no --file options is passed, the program assumes default file is used.
+    parameters(int argc, char* argv[], const std::string f = "vardata.conf");
+
 	// Used to convert string boundary type to enum boundary types
 	boundary_Type str2boundary(std::string tempSt);
 	// convert boundaries to text
@@ -158,10 +166,5 @@ private:
     // scale1, scale2, weight, load, adv_enabled, div_enabled, scale2
     // inv_iteration, schure_iterations
     void compute_additionals();
-
-    // Problem case number. This can only be retrieved and can't be changed
-    // during runtime.
-    int cas;
 };
-
 #endif

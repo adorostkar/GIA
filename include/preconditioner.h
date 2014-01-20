@@ -46,8 +46,7 @@ namespace Elastic
         BlockSchurPreconditioner (const TrilinosWrappers::BlockSparseMatrix     &S,
                                   const PreconditionerA0           &A0preconditioner,
                                   const PreconditionerA1           &A1preconditioner,
-                                  const PreconditionerS            &Spreconditioner,
-                                  parameters                       *_par);
+                                  const PreconditionerS            &Spreconditioner);
         
         void vmult (TrilinosWrappers::BlockVector       &dst,
                     const TrilinosWrappers::BlockVector &src) const;
@@ -72,16 +71,16 @@ Elastic::BlockSchurPreconditioner<PreconditionerA0, PreconditionerA1, Preconditi
 BlockSchurPreconditioner(const TrilinosWrappers::BlockSparseMatrix  &S,
                          const PreconditionerA0                      &A0preconditioner,
                          const PreconditionerA1                      &A1preconditioner,
-                         const PreconditionerS                       &Spreconditioner,
-                         parameters									 *_par)
+                         const PreconditionerS                       &Spreconditioner)
     :
-      par 					(_par),
       s_matrix				(&S),
       a0_preconditioner        (A0preconditioner),
       a1_preconditioner        (A1preconditioner),
       s_preconditioner        (Spreconditioner),
       tmp                     (s_matrix->block(2,2).m())
-{}
+{
+    par = parameters::getInstance();
+}
 
 template <class PreconditionerA0, class PreconditionerA1, class PreconditionerS>
 void

@@ -27,7 +27,7 @@ namespace Elastic
 	public:
 		double mu, beta;
 		
-        Coefficients (double E, double v, parameters *_par)  : Function<dim>(), mu( get_mu(E,v) ), beta( get_beta(E,v) ), par(_par) {}
+        Coefficients (double E, double v)  : Function<dim>(), mu( get_mu(E,v) ), beta( get_beta(E,v) ) {par = parameters::getInstance();}
 		
 		double get_mu(double E, double v);
 		

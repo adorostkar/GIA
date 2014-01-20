@@ -25,7 +25,7 @@ namespace Elastic
     class BoundaryValues: public Function<dim>
 	{
     public:
-        BoundaryValues (parameters *_par) : Function<dim>(dim+1), par(_par) {}
+        BoundaryValues () : Function<dim>(dim+1){ par = parameters::getInstance();}
 		
 		virtual double value (const Point<dim>   &p, const unsigned int  component = 0) const;
 		
@@ -48,7 +48,8 @@ Elastic::BoundaryValues<dim>::value (const Point<dim>  &p, const unsigned int co
 
     if ( /*(par->load_enabled) && */(component == 1) ){
 //        if( /*(std::fabs(p[1] - par->y2) < ZERO) && */( p[0] <= par->Ix ) ){
-            return par->load*par->load_enabled;
+//            std::cout << p[0] << std::endl;
+            return par->load;//*par->load_enabled;
 //        }
     }
     return 0;

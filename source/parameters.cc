@@ -1,4 +1,28 @@
 #include "parameters.h"
+bool parameters::instanceFlag = false;
+parameters* parameters::singlton = NULL;
+
+parameters::~parameters(){
+    instanceFlag = false;
+    singlton = NULL;
+}
+
+parameters* parameters::getInstance(int _argc, char *_argv[]){
+    if(!instanceFlag){
+        singlton = new parameters(_argc,_argv);
+        instanceFlag = true;
+    }
+    return singlton;
+}
+
+parameters* parameters::getInstance(){
+    if(!instanceFlag){
+        singlton = new parameters();
+        instanceFlag = true;
+    }
+
+    return singlton;
+}
 
 // Just defaults, no write is allowed since it will rewrite any parameters added in the file.
 parameters::parameters(const std::string f){
@@ -40,141 +64,6 @@ parameters::parameters(int argc, char* argv[], const std::string f){
 	// If verbose, print all the parameters out
 	if (verbose)
 		print_values();
-}
-
-// copy constructor.
-parameters::parameters(const parameters &pm){
-	dimension = pm.dimension;
-	degree = pm.degree;
-	L = pm.L;
-	U = pm.U;
-	S = pm.S;
-	T = pm.T;
-	x1 = pm.x1;
-	y1 = pm.y1;
-	x2 = pm.x2;
-	y2 = pm.y2;
-	Ix = pm.Ix;
-	h = pm.h;
-    b_ice = pm.b_ice;
-	b_up = pm.b_up;
-	b_left = pm.b_left;
-	b_right = pm.b_right;
-	b_bottom = pm.b_bottom;
-	refinements = pm.refinements;
-	xdivisions = pm.xdivisions;
-	ydivisions = pm.ydivisions;
-	surf_samples = pm.surf_samples;
-	YOUNG = pm.YOUNG;
-	POISSON = pm.POISSON;
-	ETA = pm.ETA;
-	rho_i = pm.rho_i;
-	rho_r = pm.rho_r;
-	gravity = pm.gravity;
-	load_enabled = pm.load_enabled;
-	weight_enabled = pm.weight_enabled;
-	adv = pm.adv;
-	div = pm.div;
-	precond = pm.precond;
-	solve = pm.solve;
-	InvMatPreTOL = pm.InvMatPreTOL;
-	SchurTOL = pm.SchurTOL;
-	TOL = pm.TOL;
-	threshold = pm.threshold;
-	one_schur_it = pm.one_schur_it;
-	solver = pm.solver;
-	info = pm.info;
-	print_local = pm.print_local;
-	print_matrices = pm.print_matrices;
-	cas = pm.cas;
-	paramFile = pm.paramFile;
-	system_iter = pm.system_iter;
-	load = pm.load;
-	weight = pm.weight;
-	g0 = pm.g0;
-	scale1 = pm.scale1;
-	scale2 = pm.scale2;
-	scale3 = pm.scale3;
-	alpha = pm.alpha;
-	beta = pm.beta;
-	delta = pm.delta;
-	gamma = pm.gamma;
-	adv_enabled = pm.adv_enabled;
-	div_enabled = pm.div_enabled;
-    inv_iterations = pm. inv_iterations;
-    schur_iterations = pm.schur_iterations;
-	str_poisson = pm.str_poisson;
-	writeback = pm.writeback;
-	verbose = pm.verbose;
-}
-
-// equality operator
-parameters & parameters::operator=(const parameters &pm){
-	if(this == &pm) return *this;
-
-	dimension = pm.dimension;
-	degree = pm.degree;
-	L = pm.L;
-	U = pm.U;
-	S = pm.S;
-	T = pm.T;
-	x1 = pm.x1;
-	y1 = pm.y1;
-	x2 = pm.x2;
-	y2 = pm.y2;
-	Ix = pm.Ix;
-	h = pm.h;
-    b_ice = pm.b_ice;
-	b_up = pm.b_up;
-	b_left = pm.b_left;
-	b_right = pm.b_right;
-	b_bottom = pm.b_bottom;
-	refinements = pm.refinements;
-	xdivisions = pm.xdivisions;
-	ydivisions = pm.ydivisions;
-	surf_samples = pm.surf_samples;
-	YOUNG = pm.YOUNG;
-	POISSON = pm.POISSON;
-	ETA = pm.ETA;
-	rho_i = pm.rho_i;
-	rho_r = pm.rho_r;
-	gravity = pm.gravity;
-	load_enabled = pm.load_enabled;
-	weight_enabled = pm.weight_enabled;
-	adv = pm.adv;
-	div = pm.div;
-	precond = pm.precond;
-	solve = pm.solve;
-	InvMatPreTOL = pm.InvMatPreTOL;
-	SchurTOL = pm.SchurTOL;
-	TOL = pm.TOL;
-	threshold = pm.threshold;
-	one_schur_it = pm.one_schur_it;
-	solver = pm.solver;
-	info = pm.info;
-	print_local = pm.print_local;
-	print_matrices = pm.print_matrices;
-	cas = pm.cas;
-	paramFile = pm.paramFile;
-	system_iter = pm.system_iter;
-	load = pm.load;
-	weight = pm.weight;
-	g0 = pm.g0;
-	scale1 = pm.scale1;
-	scale2 = pm.scale2;
-	scale3 = pm.scale3;
-	alpha = pm.alpha;
-	beta = pm.beta;
-	delta = pm.delta;
-	gamma = pm.gamma;
-	adv_enabled = pm.adv_enabled;
-	div_enabled = pm.div_enabled;
-    inv_iterations = pm. inv_iterations;
-    schur_iterations = pm.schur_iterations;
-	str_poisson = pm.str_poisson;
-	writeback = pm.writeback;
-	verbose = pm.verbose;
-	return *this;
 }
 
 // set parameters to their defaults

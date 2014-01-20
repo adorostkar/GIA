@@ -13,7 +13,8 @@ int main (int argc, char** argv)
 		Utilities::MPI::MPI_InitFinalize mpi_initialization (argc, argv);
 		
 		// get parameters
-		par = new parameters(argc,argv); 
+//		par = new parameters(argc,argv);
+        par = parameters::getInstance(argc, argv);
 		
 		ostringstream filename;
 		filename << "iterations" << par->str_poisson << ".log";
@@ -24,10 +25,10 @@ int main (int argc, char** argv)
 		deallog.depth_console (0);
 		
 		if(par->dimension == 2){
-			Elastic::ElasticProblem<2> elastic_problem(par->degree, par);
+            Elastic::ElasticProblem<2> elastic_problem(par->degree, par->info);
 			elastic_problem.run ();
         }else if(par->dimension == 3){
-            Elastic::ElasticProblem<3> elastic_problem(par->degree, par);
+            Elastic::ElasticProblem<3> elastic_problem(par->degree, par->info);
             elastic_problem.run ();
 		}else printf("wrong dimension");
         
