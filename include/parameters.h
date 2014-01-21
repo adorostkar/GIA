@@ -1,4 +1,4 @@
-/* TODO:
+/** TODO:
  - Add argument check. i.e boundaries for the arguments that get int or double
  - Find a way to add variables added to struct long_options automatically to
     print_ methods and help method.
@@ -100,7 +100,10 @@ public:
 
     // get case number
     int cases(){return cas;}
-	// File name of the option file
+
+    /*!
+     * \brief paramFile name of the file to read or write parameters to.
+     */
 	std::string					paramFile;
 	/* problem variables */
 
@@ -117,20 +120,48 @@ public:
 	double						InvMatPreTOL,SchurTOL,TOL,threshold;
 	double						YOUNG,POISSON,ETA;
 	double						rho_i,rho_r,g0;
-	double						x1,y1,x2,y2,Ix,h;
-	double						L,U,S,T; // Scaling parameters for length, displacement, Stress and time
-	double						scale1,scale2,scale3;
-	double						alpha, beta, delta, gamma;
-    // alpha = rho_i*h/rho_r
-    // beta  = E*(1-2*v)/( 4*v*(1+v) )
-    // delta = (1+v)(1-2v)/(E(1-v)) = 1/(2*mu + lambda)
-    // gamma = 2v(1+v)/E(1-v) = 1/(2*beta + mu)
+    double						x1,y1,x2,y2,Ix,h;
+    double						L,U,S,T; // Scaling parameters for length, displacement, Stress and time
 
+    /*!
+     * \brief scale1 = L^2/(SU)
+     * \brief scale2 = L/SU
+     * \brief scale3 = (L/S)*rho_r*g
+     */
+	double						scale1,scale2,scale3;
+
+    /*!
+     * \brief alpha = rho_i*h/rho_r
+     * \brief beta  = E*(1-2*v)/( 4*v*(1+v) )
+     * \brief delta = (1+v)(1-2v)/(E(1-v)) = 1/(2*mu + lambda)
+     * \brief gamma = 2v(1+v)/E(1-v) = 1/(2*beta + mu)
+     */
+	double						alpha, beta, delta, gamma;
+
+    /*!
+     * \brief print_local prints local matrices to output
+     * \brief print_matrices prints global matrices to output
+     * \brief one_schur_it uses one iteration to compute Schure
+     */
 	bool						print_local,print_matrices, one_schur_it;
+
+    /*!
+     * \brief load_enabled is load enabled on the surface.
+     * \brief weight_enabled is body force is enabled.
+     * \brief adv_enabled is advection term is enabled.
+     * \brief div_enabled id divergance term is enabled.
+     */
 	bool						load_enabled,weight_enabled,adv_enabled,div_enabled;
+    /*!
+     * \brief solve is system should be solved or not
+     * usefull if one is testing for issues in assembly.
+     */
 	bool						solve;
-    // writeback parameters to file.
-	bool						writeback;
+
+    /*!
+     * \brief writeback write parameters back to file
+     */
+    bool						writeback;
 	
     boundary_Type				b_ice, b_up, b_left, b_right, b_bottom;
     std::vector<unsigned int>		inv_iterations, schur_iterations;
@@ -138,7 +169,10 @@ public:
 	std::string					str_poisson;
 	std::stringstream			dofs;
 private:
-	bool						verbose; // Verbose parameter set
+    /*!
+     * \brief verbose is parameters are verbose.
+     */
+    bool						verbose;
     // Problem case number. This can only be retrieved and can't be changed
     // during runtime.
     int                         cas;

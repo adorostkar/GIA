@@ -1,4 +1,4 @@
-/* TODO
+/** TODO
 
 */
 
@@ -119,10 +119,6 @@ vmult (TrilinosWrappers::BlockVector       &dst,
     deallog << "\t\tInner First block" << control_inv0.last_step() << ", with TOL = "<< par->InvMatPreTOL*src.block(0).l2_norm() << std::endl;
     deallog << "\t\tInner second block" << control_inv1.last_step() << ", with TOL = "<< par->InvMatPreTOL*src.block(1).l2_norm() << std::endl;
 
-    // a_preconditioner.vmult (dst.block(0), src.block(0));
-
-//    s_matrix->block(1,0).residual(tmp, dst.block(0), src.block(1));
-//    tmp *= -1;
     s_matrix->block(2,0).residual(tmp, dst.block(0),src.block(2));
     tmp *= -1;
     s_matrix->block(2,1).vmult_add(tmp, dst.block(1));

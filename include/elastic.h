@@ -2,62 +2,54 @@
  
  */
 
-#include <deal.II/base/timer.h>
-#include <deal.II/base/quadrature_lib.h>
-#include <deal.II/base/logstream.h>
-#include <deal.II/base/function.h>
-#include <deal.II/base/utilities.h>
 #include <deal.II/base/convergence_table.h>
-
-#include <deal.II/lac/block_vector.h>
-#include <deal.II/lac/full_matrix.h>
-#include <deal.II/lac/block_sparse_matrix.h>
-
-#include <deal.II/lac/solver_cg.h>
-#include <deal.II/lac/solver_gmres.h>
-
-#include <deal.II/lac/precondition.h>
-#include <deal.II/lac/constraint_matrix.h>
-
-#include <deal.II/grid/tria.h>
-#include <deal.II/grid/grid_generator.h>
-#include <deal.II/grid/tria_accessor.h>
-#include <deal.II/grid/tria_iterator.h>
-#include <deal.II/grid/tria_boundary_lib.h>
-
+#include <deal.II/base/function.h>
+#include <deal.II/base/logstream.h>
+#include <deal.II/base/quadrature_lib.h>
+#include <deal.II/base/timer.h>
+#include <deal.II/base/utilities.h>
+#include <deal.II/dofs/dof_accessor.h>
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/dofs/dof_renumbering.h>
-#include <deal.II/dofs/dof_accessor.h>
 #include <deal.II/dofs/dof_tools.h>
-
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_system.h>
 #include <deal.II/fe/fe_values.h>
-
-#include <deal.II/numerics/vector_tools.h>
-#include <deal.II/numerics/matrix_tools.h>
-#include <deal.II/numerics/data_out.h>
-#include <deal.II/numerics/error_estimator.h>
-
-#include <deal.II/lac/trilinos_sparse_matrix.h>
-#include <deal.II/lac/trilinos_block_sparse_matrix.h>
-#include <deal.II/lac/trilinos_vector.h>
-#include <deal.II/lac/trilinos_block_vector.h>
-#include <deal.II/lac/trilinos_precondition.h>
-
+#include <deal.II/grid/grid_generator.h>
+#include <deal.II/grid/tria.h>
+#include <deal.II/grid/tria_accessor.h>
+#include <deal.II/grid/tria_boundary_lib.h>
+#include <deal.II/grid/tria_iterator.h>
+#include <deal.II/lac/block_sparse_matrix.h>
+#include <deal.II/lac/block_vector.h>
+#include <deal.II/lac/constraint_matrix.h>
+#include <deal.II/lac/constraint_matrix.h>
+#include <deal.II/lac/full_matrix.h>
+#include <deal.II/lac/precondition.h>
+#include <deal.II/lac/solver_cg.h>
+#include <deal.II/lac/solver_gmres.h>
 #include <deal.II/lac/sparse_direct.h>
 #include <deal.II/lac/sparse_ilu.h>
-#include <deal.II/lac/constraint_matrix.h>
+#include <deal.II/lac/trilinos_block_sparse_matrix.h>
+#include <deal.II/lac/trilinos_block_vector.h>
+#include <deal.II/lac/trilinos_precondition.h>
+#include <deal.II/lac/trilinos_sparse_matrix.h>
+#include <deal.II/lac/trilinos_vector.h>
+#include <deal.II/numerics/data_out.h>
+#include <deal.II/numerics/error_estimator.h>
+#include <deal.II/numerics/matrix_tools.h>
+#include <deal.II/numerics/vector_tools.h>
+
 
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <typeinfo>
 
-#include "parameters.h"
 #include "boundary.h"
 #include "coefficient.h"
 #include "exact.h"
+#include "parameters.h"
 #include "preconditioner.h"
 #include "rhs.h"
 
@@ -71,17 +63,13 @@ using namespace dealii;
 namespace Elastic
 {
     // Solver structure
-    struct Solver
-    {
-        // typedef SolverCG<>		inner;
-        // typedef SolverCG<>		schur;
+    struct Solver {
         typedef SolverGMRES<TrilinosWrappers::Vector>	inner;
         typedef SolverGMRES<>	schur;
     };
     
     template <int dim>
-    class ElasticProblem
-    {
+    class ElasticProblem {
     public:
     ElasticProblem (const unsigned int degree, const int _info);
         void run ();
@@ -136,7 +124,6 @@ namespace Elastic
         std_cxx1x::shared_ptr<typename Preconditioner::inner> A0_preconditioner;
         std_cxx1x::shared_ptr<typename Preconditioner::inner> A1_preconditioner;
         std_cxx1x::shared_ptr<typename Preconditioner::schur> S_preconditioner;
-        //std_cxx1x::shared_ptr<TrilinosWrappers::PreconditionAMG> A_preconditioner;
     };
 }
 
@@ -160,23 +147,16 @@ fe (FE_Q<dim>(degree+1), dim,
 dof_handler (triangulation)
 {
     par = parameters::getInstance();
-    //    info_0.set_condition(par->info == 0);
-    //    info_1.set_condition(par->info == 1);
-    //    info_2.set_condition(par->info == 2);
 }
 
 template <int dim>
 void
-Elastic::ElasticProblem<dim>::setup_dofs ()
-{
-    
-    //GridGenerator::hyper_cube (triangulation, par->left, par->right);
-    
-    // JC: labeling the faces of the gometry with boundary conditions
-    par->load_enabled = true; // PROBLEM?? change in parameter is made.
-    
+Elastic::ElasticProblem<dim>::setup_dofs (){
+
+    // Printing application variable
     par->print_variables();
     
+    // Number of initial subdivisions for each axis
     std::vector<unsigned int> subdivisions (dim, 1);
     subdivisions[0] = par->xdivisions;
     subdivisions[1] = par->ydivisions;
@@ -189,6 +169,7 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
                                     Point<dim>(par->x2,par->y2) :
                                     Point<dim>(par->x2,1,par->y2));
     
+    // Creating the grid
     GridGenerator::subdivided_hyper_rectangle (triangulation,
                                                subdivisions,
                                                bottom_left,
@@ -197,11 +178,8 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
     // Refine the mesh with the number of refinement in the parameters.
     triangulation.refine_global (par->refinements);
     
-    /**
-     * Set boundary flags
-     * TODO: Is it ok if boundary under load is flagged seperatly?
-     * Will the boundary under the flag change due to the stretch?
-     */
+
+    // Set boundary flags
     for (typename Triangulation<dim>::active_cell_iterator
          cell = triangulation.begin_active();
          cell != triangulation.end(); ++cell)
@@ -222,8 +200,10 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
                 // the face is on the bottom boundary.
                 else if (face_center[dim-1] == par->y1)
                     cell->face(f)->set_boundary_indicator(par->b_bottom);
-                // If y component of the face's center is on the top boundary,
-                // the face is on the top boundary.
+                /** If y component of the face's center is on the top boundary
+                 * and the boundary is under the ice, it is flagged as b_ice
+                 * otherwise it is b_up
+                 **/
                 else if (face_center[dim-1] == par->y2){
                     if(face_center[0] <= par->Ix)
                         cell->face(f)->set_boundary_indicator(par->b_ice);
@@ -233,9 +213,6 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
             }// at boundary
         }// for faces
     
-    //    // Refine the mesh with the number of refinement in the parameters.
-    //    triangulation.refine_global (par->refinements);
-    
     dof_handler.distribute_dofs (fe);
     /**
      * TODO:
@@ -244,8 +221,9 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
      * In ref 7 excluding this runtime takes 1100 secs
      * and with this we have 917 secs.
      */
-    //    DoFRenumbering::Cuthill_McKee (dof_handler); // PROBLEM?? can we use it?
+    //    DoFRenumbering::Cuthill_McKee (dof_handler);
     
+    // Renumber component wise
     std::vector<unsigned int> block_component (n_blocks,0);
     for(int i=0; i<n_blocks; ++i)
         block_component[i] = i;
@@ -253,6 +231,7 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
     // DOF renumbering
     DoFRenumbering::component_wise (dof_handler, block_component);
     
+    //Interpolate boudaries using constraint matrix
     {
         std::vector<bool> ns_mask (dim+1, true); // NO_SLIP
         std::vector<bool> vs_mask (dim+1, true); // V_SLIP
@@ -280,6 +259,7 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
     }
     constraints.close();
     
+    // Reset preconditioners and matrices
     A0_preconditioner.reset ();
     A1_preconditioner.reset ();
     S_preconditioner.reset ();
@@ -287,6 +267,7 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
     system_matrix.clear ();
     system_preconditioner.clear ();
     
+    // Count the number of DOFs per block
     std::vector<unsigned int> dofs_per_block (n_blocks);
     DoFTools::count_dofs_per_block (dof_handler, dofs_per_block, block_component);
     
@@ -304,6 +285,7 @@ Elastic::ElasticProblem<dim>::setup_dofs ()
         par->dofs << " + " << dofs_per_block[i];
     par->dofs << ")" << std::endl;
     
+    // Create sparsity pattern
     {
         BlockCompressedSimpleSparsityPattern bcsp(n_blocks, n_blocks);
         for(int i=0; i<n_blocks; ++i){
@@ -443,9 +425,6 @@ Elastic::ElasticProblem<dim>::assemble_system ()
         
         right_hand_side.vector_value_list(fe_values.get_quadrature_points(),
                                           rhs_values);
-        
-        //        boundaries.vector_value_list(fe_face_values.get_quadrature_points(),
-        //                                     boundary_values);
         
         coeff.mu_value_list     (fe_values.get_quadrature_points(), mu_values);
         coeff.beta_value_list   (fe_values.get_quadrature_points(), beta_values);
@@ -607,7 +586,9 @@ Elastic::ElasticProblem<dim>::assemble_system ()
     } // end cell
 }
 
-// PROBLEM?? check the paper.
+/**
+ * Setup preconditioners
+ */
 template <int dim>
 void
 Elastic::ElasticProblem<dim>::setup_AMG ()
@@ -824,9 +805,8 @@ Elastic::ElasticProblem<dim>::run ()
     }
     
     // printing: matrices, par->info
-    //    if(par->POISSON == 0.2 ){
     generate_matlab_study();
-    //    }
+
     if(par->solve){
         int tempSpace = 15;
         info_0   << "GMRES iterations: system(<inv>,<schur>) = "
@@ -943,7 +923,6 @@ Elastic::ElasticProblem<dim>::generate_matlab_study(){
         }
         myfile << "load('data_l_m.dat');"  << endl
         << "load('data_l_p.dat');"  << endl;
-        //               << "load('data_rhs.dat');"   << endl;
         
         myfile << "% Creating A and P matrices" << std::endl
         << "A = [";
