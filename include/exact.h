@@ -54,7 +54,6 @@ Elastic::ExactSolution<dim>::vector_value (const Point<dim> &p, Vector<double>  
     const double A  = par->delta * g0 * par->rho_i * par->h;
     const double p0 = gamma * par->rho_i * g0 * par->h;
 
-    if(par->cases() == 2){ // Uniform load
         values(0) = 0;
         if(par->adv_enabled){
             if(par->div_enabled){ // adv = 1, div = 1, complete
@@ -69,11 +68,6 @@ Elastic::ExactSolution<dim>::vector_value (const Point<dim> &p, Vector<double>  
             values(1) = A*(yb-y);
             values(2) = -p0 * L;
         }
-    }else{ // no exact solution available
-        values(0) = 1e10;
-        values(1) = 1e10;
-        values(2) = 1e10;
-    }
 }
 // end Exact solution
 /*

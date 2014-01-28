@@ -25,8 +25,8 @@ parameters* parameters::getInstance(){
 }
 
 // Just defaults, no write is allowed since it will rewrite any parameters added in the file.
-parameters::parameters(const std::string f){
-    paramFile = f;
+parameters::parameters(){
+    paramFile = "vardata.conf";
 	set_default();
 
 	inv_iterations   = std::vector<unsigned int>();
@@ -36,10 +36,11 @@ parameters::parameters(const std::string f){
 }
 
 // Constructor that gets the application parameters
-parameters::parameters(int argc, char* argv[], const std::string f){
+parameters::parameters(int argc, char* argv[]){
 	// Set default file name
-	paramFile = f;
+    paramFile = "vardata.conf";
 	
+    if(argc > 1)
 	find_filename(argc,argv);
 
 	set_default();
@@ -72,12 +73,6 @@ void parameters::set_default(){
 	degree			= 1;
 
 
-	L				= 1.0e7;
-	U				= 1.0;
-	S				= 4.0e11;
-	T				= 1.0;
-
-
 	x1				= 0.0;
 	x2				= 1.0e7;
 	y1				= -4e6;
@@ -108,8 +103,8 @@ void parameters::set_default(){
 
 	load_enabled 	= true;
 	weight_enabled 	= false;
-	adv 			= 1;
-	div 			= 1;
+    adv_enabled		= true;
+    div_enabled		= true;
 
 	precond 		= 0;
 	solve 			= true;
@@ -125,7 +120,7 @@ void parameters::set_default(){
 	print_local 	= false;
 	print_matrices 	= false;
 
-	cas = 0;
+//	cas = 0;
 
 	writeback = false;
 	verbose = false;
@@ -143,14 +138,6 @@ void parameters::read_Parameters(){
     			ifs >> dimension;
     		else if(iptSt == "degree")
     			ifs >> degree;
-    		else if(iptSt == "L")
-    			ifs >> L;
-			else if(iptSt == "U")
-				ifs >> U;
-			else if(iptSt == "S")
-				ifs >> S;
-			else if(iptSt == "T")
-				ifs >> T;
 			else if(iptSt == "x1")
 				ifs >> x1;
 			else if(iptSt == "y1")
@@ -207,10 +194,10 @@ void parameters::read_Parameters(){
 				ifs >> load_enabled;
 			else if(iptSt == "weight_enabled")
 				ifs >> weight_enabled;
-			else if(iptSt == "adv")
-				ifs >> adv;
-			else if(iptSt == "div")
-				ifs >> div;
+            else if(iptSt == "adv_enabled")
+                ifs >> div_enabled;
+            else if(iptSt == "div_enabled")
+                ifs >> div_enabled;
 			else if(iptSt == "precond")
 				ifs >> precond;
 			else if(iptSt == "solve")
@@ -248,18 +235,6 @@ void parameters::write_Parameters(){
     	ofs << "\n## Degree of the polynomial basis functions." << endl;
     	ofs << "degree "		<< degree << endl;
 
-    	ofs << "\n## Scaling value for length." << endl;
-    	ofs << "L "				<< L 					<< endl; 
-
-    	ofs << "\n## Scaling value for displacemnet." << endl;
-    	ofs << "U "				<< U 					<< endl;
-
-    	ofs << "\n## Scaling value for stress." << endl;
-    	ofs << "S "				<< S 					<< endl;
-
-    	ofs << "\n## Scaling value for time." << endl;
-    	ofs << "T "				<< T 					<< endl;
-
         ofs << "\n## X coordinate of the bottom left side of the domain." << endl;
     	ofs << "x1 "			<< x1 					<< endl;
 
@@ -275,10 +250,10 @@ void parameters::write_Parameters(){
         ofs << "\n## Width of the load(Ice)." << endl;
     	ofs << "Ix "			<< Ix					<< endl;
 
-    	ofs << "\n## Thickness of ice used as load." << endl;
+        ofs << "\n## Thickness of ice." << endl;
     	ofs << "h "				<< h 					<< endl;
 
-        ofs << "\n## Boundary type on the ice." << endl;
+        ofs << "\n## Boundary type under the ice." << endl;
         ofs << "b_ice "			<< boudary2str(b_ice)	<< endl;
 
     	ofs << "\n## Boundary type on the top wall." << endl;
@@ -327,10 +302,13 @@ void parameters::write_Parameters(){
     	ofs << "load_enabled " 	<< load_enabled			<< endl;
 
     	ofs << "\n## Description." << endl;
-    	ofs << "adv "			<< adv					<< endl;
+        ofs << "weight_enabled " 	<< weight_enabled	<< endl;
 
-    	ofs << "\n## Description." << endl;
-    	ofs << "div "			<< div					<< endl;
+        ofs << "\n## If advection term is enabled."     << endl;
+        ofs << "adv_enabled "		<< adv_enabled		<< endl;
+
+        ofs << "\n## If divergance term is enabled."    << endl;
+        ofs << "div_enabled "		<< div_enabled		<< endl;
 
     	ofs << "\n## {0 = diag(A), 1 = A} Whether to rewrite block A_11 in the preconditioner." << endl;
     	ofs << "precond "		<< precond 				<< endl;
@@ -376,44 +354,6 @@ void parameters::parse_command_line(int argc, char* argv[]){
 		next_option = getopt_long (argc, argv, short_options,
 								   long_options, NULL);
         switch (next_option){
-			case '0': // --footing
-				x1			= 0.0;
-				y1			= -4e6;
-				x2			= 1e7;
-				y2			= 0.0;
-				Ix			= 1e6;
-				xdivisions	= 10;
-				ydivisions	= 4;
-				cas = 0;
-				break;
-			case '1': // --Large, GIA footing, Large domain
-				x1			= 0.0;
-				y1			= -4e6;
-				x2			= 25e6;
-				y2			= 0.0;
-				Ix			= 1e6;
-				xdivisions	= 25;
-				ydivisions	= 4;
-				flag = true;
-				cas = 1;
-				break;
-			case '2': // --uniform, GIA uniform load
-				x1			= 0.0;
-				y1			=-4e6;
-				x2			= 4e6;
-				y2			= 0.0;
-				Ix			= 4e6;
-				xdivisions	= 1;
-				ydivisions	= 1;
-				
-                b_ice				= LOAD;
-                b_up				= FREE;
-				b_left				= V_SLIP;
-				b_right				= V_SLIP;
-				b_bottom			= NO_SLIP;
-
-				cas = 2;
-				break;
 			case '3':
 				paramFile=argv[optind];
 				break;
@@ -424,14 +364,14 @@ void parameters::parse_command_line(int argc, char* argv[]){
                 dimension = atoi(optarg);
                 break;
 			case 'a':   // -a or --adv
-				adv = atof(optarg);
+                adv_enabled = (atoi(optarg) == 1);
 				break;	
 			case 'd':   // -d or --div
-				div = atof(optarg);
+                div_enabled = (atoi(optarg) == 1);
 				break;
 			case 'e':   // -e or --elastic
-				adv = 0;
-				div = 0;
+                adv_enabled = false;
+                div_enabled = false;
 				break;
 			case 'f':   // -f or --surf_samples
 				surf_samples = atoi(optarg);
@@ -519,21 +459,6 @@ void parameters::print_usage(int exitNum){
 		<< "Option file"  << endl;
 
 	msg << left << setw(firstCol)	<< setfill(' ') << "" 
-		<< left << setw(secondCol)	<< setfill(' ') << "--footing" 
-		<< left << setw(thirdCol)	<< setfill(' ') << "void" 
-		<< "GIA footing"  << endl;
-
-	msg << left << setw(firstCol)	<< setfill(' ') << "" 
-		<< left << setw(secondCol)	<< setfill(' ') << "--large" 
-		<< left << setw(thirdCol)	<< setfill(' ') << "void" 
-		<< "GIA footing(Large domain)"  << endl;
-
-	msg << left << setw(firstCol)	<< setfill(' ') << "" 
-		<< left << setw(secondCol)	<< setfill(' ') << "--uniform" 
-		<< left << setw(thirdCol)	<< setfill(' ') << "void" 
-		<< "GIA uniform load"  << endl;
-
-    msg << left << setw(firstCol)	<< setfill(' ') << ""
         << left << setw(secondCol)	<< setfill(' ') << "--dim"
         << left << setw(thirdCol)	<< setfill(' ') << "integer"
         << "Problem dimension"  << endl;
@@ -546,7 +471,7 @@ void parameters::print_usage(int exitNum){
 	msg << left << setw(firstCol)	<< setfill(' ') << "-a" 
 		<< left << setw(secondCol)	<< setfill(' ') << "--adv" 
 		<< left << setw(thirdCol)	<< setfill(' ') << "double" 
-		<< "Overwrite adv"  << endl;
+        << "[0,1] is advection enabled"  << endl;
 
     msg << left << setw(firstCol)	<< setfill(' ') << "-b"
         << left << setw(secondCol)	<< setfill(' ') << "--boundary_cond"
@@ -556,7 +481,7 @@ void parameters::print_usage(int exitNum){
 	msg << left << setw(firstCol)	<< setfill(' ') << "-d" 
 		<< left << setw(secondCol)	<< setfill(' ') << "--div" 
 		<< left << setw(thirdCol)	<< setfill(' ') << "double" 
-		<< "Overwrite div"  << endl;
+        << "[0,1] is divergence enabled"  << endl;
 
     msg << left << setw(firstCol)	<< setfill(' ') << "-e"
         << left << setw(secondCol)	<< setfill(' ') << "--elastic"
@@ -662,19 +587,12 @@ void parameters::print_variables(){
 	
 	// string Title
 	std::ostringstream title, s_precond, outStr;
-	switch(cas){
-		case 0:
+    if(x2 == Ix){
 			title << "Case: Footing";
 			s_precond << "P_00: diag(A)";
-			break;
-		case 1:
-			title << "Case: Footing, Large domain";
-			s_precond << "P_00: A";
-			break;
-		case 2:
+    }else{
 			title << "Case: Uniform load";
 			s_precond << "P_00: A";
-			break;
 	}
 	
 	if(info == 0){
@@ -722,15 +640,8 @@ void parameters::print_variables(){
 				 << endl;
 
 		outStr << left << setw(emptySpace)<< setfill(' ') << "" 
-				 << left << setw(firstCol)	<< setfill(' ') << "adv" 
-				 << left << setw(secondCol) << setfill(' ') << adv*scale3 
-				 << left << setw(thirdCol)	<< setfill(' ') << "adv_enabled" 
-				 << left << setw(forthCol)	<< setfill(' ') << adv_enabled
-				 << endl;
-
-		outStr << left << setw(emptySpace)<< setfill(' ') << "" 
-				 << left << setw(firstCol)	<< setfill(' ') << "div" 
-				 << left << setw(secondCol) << setfill(' ') << div*scale3 
+                 << left << setw(firstCol)	<< setfill(' ') << "adv_enabled"
+                 << left << setw(secondCol) << setfill(' ') << adv_enabled
 				 << left << setw(thirdCol)	<< setfill(' ') << "div_enabled" 
 				 << left << setw(forthCol)	<< setfill(' ') << div_enabled
 				 << endl;
@@ -760,16 +671,14 @@ void parameters::print_variables(){
 				 << "Scaled dimensions (x1, y1, x2, y2), (Ix,h) = (" << x1 << ", " << y1 << ", " << x2 << ", " << y2 << "), (" << Ix << ", " << h/L << ")" << std::endl;
 	}else if(info == 1){
 		firstCol = 15;
-		outStr << left << setw(firstCol)	<< setfill(' ') << "case" 
-				 << left << setw(firstCol)	<< setfill(' ') << "precond"
+        outStr   << left << setw(firstCol)	<< setfill(' ') << "precond"
 				 << left << setw(firstCol)	<< setfill(' ') << "adv_enabled"
 				 << left << setw(firstCol)	<< setfill(' ') << "div_enabled"
 				 << left << setw(firstCol)	<< setfill(' ') << "refinements"
 				 << left << setw(firstCol)	<< setfill(' ') << "POISSON" 
 				 << endl;
 
-		outStr << left << setw(firstCol)	<< setfill(' ') << cas
-				 << left << setw(firstCol)	<< setfill(' ') << precond
+        outStr   << left << setw(firstCol)	<< setfill(' ') << precond
 				 << left << setw(firstCol)	<< setfill(' ') << adv_enabled
 				 << left << setw(firstCol)	<< setfill(' ') << div_enabled
 				 << left << setw(firstCol)	<< setfill(' ') << refinements
@@ -777,8 +686,7 @@ void parameters::print_variables(){
 				 << endl;
 	}else if(info == 2){ // invTOL test
 		firstCol = 15;
-		outStr << left << setw(firstCol)	<< setfill(' ') << "case" 
-				 << left << setw(firstCol)	<< setfill(' ') << "precond"
+        outStr   << left << setw(firstCol)	<< setfill(' ') << "precond"
 				 << left << setw(firstCol)	<< setfill(' ') << "adv_enabled"
 				 << left << setw(firstCol)	<< setfill(' ') << "div_enabled"
 				 << left << setw(firstCol)	<< setfill(' ') << "refinements"
@@ -787,8 +695,7 @@ void parameters::print_variables(){
 				 << left << setw(firstCol)	<< setfill(' ') << "SchurTOL"
 				 << std::endl;
 
-		outStr << left << setw(firstCol)	<< setfill(' ') << cas
-				 << left << setw(firstCol)	<< setfill(' ') << precond
+        outStr   << left << setw(firstCol)	<< setfill(' ') << precond
 				 << left << setw(firstCol)	<< setfill(' ') << adv_enabled
 				 << left << setw(firstCol)	<< setfill(' ') << div_enabled
 				 << left << setw(firstCol)	<< setfill(' ') << refinements
@@ -875,10 +782,10 @@ void parameters::print_values(){
 			<< load_enabled << endl;
 	cout << left << setw(shift_num) << setfill('.') << "weight_enabled "
 			<< weight_enabled << endl;
-	cout << left << setw(shift_num) << setfill('.') << "adv "
-			<< adv << endl;
-	cout << left << setw(shift_num) << setfill('.') << "div "
-			<< div << endl;
+    cout << left << setw(shift_num) << setfill('.') << "adv_enabled "
+            << adv_enabled << endl;
+    cout << left << setw(shift_num) << setfill('.') << "div_enabled "
+            << div_enabled << endl;
 
 	cout << left << setw(shift_num) << setfill('.') << "precond "
 			<< precond << endl;
@@ -955,6 +862,10 @@ bool parameters::fexists(){
 }
 
 void parameters::compute_additionals(){
+    L = x2;
+    U = 1.0;
+    S = YOUNG;
+    T = 1.0;
 
 	// Scale parameters
 	YOUNG = YOUNG/S;
@@ -988,13 +899,6 @@ void parameters::compute_additionals(){
 	weight = (weight_enabled)?(scale1*rho_r*gravity):0.0;
 	
 	load = (load_enabled)?(scale2*rho_i*gravity*h):0.0;
-	//par.adv  = (par.adv_enabled )?(par.scale2*par.rho_r*par.gravity) :0.0;
-	//par.div  = (par.div_enabled )?(par.scale2*par.rho_r*par.gravity) :0.0;
-	
-	adv_enabled = (int)fabs(adv); // to be removed
-	div_enabled = (int)fabs(div); // to be removed
-	
-	// printf("**adv = %f, div = %f",par.adv,par.div);
 }
 
 

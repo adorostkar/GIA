@@ -36,6 +36,7 @@
 #include <deal.II/lac/trilinos_sparse_matrix.h>
 #include <deal.II/lac/trilinos_vector.h>
 #include <deal.II/numerics/data_out.h>
+#include <deal.II/numerics/data_out_faces.h>
 #include <deal.II/numerics/error_estimator.h>
 #include <deal.II/numerics/matrix_tools.h>
 #include <deal.II/numerics/vector_tools.h>
@@ -103,7 +104,8 @@ namespace Elastic
         // Computer the error
         void compute_errors () const;
         void output_results ();
-        void surface_values ();
+        void surface_values () __attribute__ ((deprecated));
+        void output_surface ();
         
         const unsigned int						degree;
         const unsigned int						n_blocks;
@@ -451,8 +453,8 @@ Elastic::ElasticProblem<dim>::assemble_system ()
                     fe.system_to_component_index(j).first;
                     
                     cell_matrix(i,j) += (symgrad_phi_u[i] * symgrad_phi_u[j] * 2 * mu_values[q] // A
-                                         - grad_phi[j]  * e * phi_u[i] * par->scale3 * par->adv	// A-adv
-                                         + div_phi_u[j] * e * phi_u[i] * par->scale3 * par->div	// A-div
+                                         - grad_phi[j]  * e * phi_u[i] * par->scale3 * par->adv_enabled	// A-adv
+                                         + div_phi_u[j] * e * phi_u[i] * par->scale3 * par->div_enabled	// A-div
                                          + div_phi_u[i] * phi_p[j] * mu_values[q]				// Bt
                                          + phi_p[i] * div_phi_u[j] * mu_values[q]				// B
                                          - phi_p[i] * phi_p[j] * beta_values[q] )				// C
@@ -719,12 +721,13 @@ template <int dim>
 void
 Elastic::ElasticProblem<dim>::output_results ()
 {
-    std::vector<std::string> solution_names (dim, "displacements");
+    using namespace std;
+    vector<string> solution_names (dim, "displacements");
     solution_names.push_back ("pressure");
     
-    std::vector<DataComponentInterpretation::DataComponentInterpretation>
-    data_component_interpretation
-    (dim, DataComponentInterpretation::component_is_part_of_vector);
+    vector<DataComponentInterpretation::DataComponentInterpretation>
+            data_component_interpretation(dim,
+                                          DataComponentInterpretation::component_is_part_of_vector);
     data_component_interpretation
     .push_back (DataComponentInterpretation::component_is_scalar);
     
@@ -735,10 +738,10 @@ Elastic::ElasticProblem<dim>::output_results ()
                               data_component_interpretation);
     data_out.build_patches ();
     
-    std::ostringstream filename;
+    ostringstream filename;
     filename << "solution_" << par->POISSON	<< ".vtk";
     
-    std::ofstream output (filename.str().c_str());
+    ofstream output (filename.str().c_str());
     data_out.write_vtk (output);
 }
 
@@ -798,9 +801,10 @@ Elastic::ElasticProblem<dim>::run ()
         schur_iter = (int)(1.0*schur_iter/par->schur_iterations.size());
         
         output_results ();
+        output_surface();
         surface_values ();
         
-        if(par->cases() == 2 )
+        if(par->x2 == par->Ix )
             compute_errors ();
     }
     
@@ -831,10 +835,47 @@ Elastic::ElasticProblem<dim>::run ()
     }
 }
 
+/*!
+ * Output surface values to file.
+ * @TODO: output only displacements of upper boundary
+ */
+template <int dim>
+void
+Elastic::ElasticProblem<dim>::output_surface() {
+        using namespace std;
+        vector<string> solution_names (dim, "displacements");
+        solution_names.push_back ("pressure");
+
+        vector<DataComponentInterpretation::DataComponentInterpretation>
+                data_component_interpretation(dim,
+                                              DataComponentInterpretation::component_is_part_of_vector);
+        data_component_interpretation
+                .push_back (DataComponentInterpretation::component_is_scalar);
+
+        DataOutFaces<dim> data_out;
+        data_out.attach_dof_handler (dof_handler);
+        data_out.add_data_vector (solution, solution_names,
+                                  DataOutFaces<dim>::type_dof_data,
+                                  data_component_interpretation);
+        data_out.build_patches ();
+    
+        ostringstream filename;
+        filename << "surfaces_" << par->POISSON	<< ".vtu";
+
+        ofstream output (filename.str().c_str());
+        data_out.write_vtu (output);
+        info_0 << "    DEALII extracting surface values ..." << endl;
+}
+
+/*!
+ * TODO: This method should be replaced with
+ * Deal ii method DataOutFaces
+ * This is deprecated since it will not work if the domain changes in time
+ * dependent method
+ */
 template <int dim>
 void
 Elastic::ElasticProblem<dim>::surface_values () {
-    
     const unsigned int n = par->surf_samples;
     double dx;
     
@@ -845,21 +886,18 @@ Elastic::ElasticProblem<dim>::surface_values () {
     
     Vector<double> value(3);
     
-    switch (par->cases()){
-        case 2: // uniform load
+    if(par->x2 == par->Ix){//uniform load
             dx = (par->y2 - par->y1)/n;
             for (unsigned int i = 0; i < n; ++i){
                 detector_locations.push_back (Point<dim> ( (par->x1 + par->x2 )*0.5,
                                                           par->y2 - dx*i ));
             }
-            break;
-        default:
+    }else{
             dx = (par->x2 - par->x1)/n;
             for (unsigned int i = 0; i < n; ++i){
                 detector_locations.push_back (Point<dim> ( par->x1 + dx*i,
                                                           0.0 ));
             }
-            break;
     }
     
     for (unsigned int i=0 ; i<detector_locations.size(); ++i){
@@ -868,6 +906,7 @@ Elastic::ElasticProblem<dim>::surface_values () {
                                   solution,
                                   detector_locations[i],
                                   value);
+        // Detector location is rescaled to meters and then devided by 1e3 to be in Km
         detector_data << (detector_locations[i](0)*par->L/1e3) << ", "
         << (detector_locations[i](1)*par->L/1e3) << ", "
         << value(0) << ", " << value(1) << ", " << (value(2)/par->L) << std::endl;
@@ -962,28 +1001,16 @@ Elastic::ElasticProblem<dim>::generate_matlab_study(){
     }
     
     std::stringstream xplot;
-    xplot << "set(gca,'XTick',";
     
-    if(par->cases() == 2){
-        xplot << "-4000:500:0)" << endl
-        << "xlabel('y(xt) ";
-    }
-    else if(par->cases() == 1){
-        xplot << "0:5000:"<<par->x2*1e4<<")" << endl
-        << "xlabel('x(y=0) ";
-    }
-    else if(par->cases() == 0){
-        xplot << "0:2000:"<<par->x2*1e4<<")" << endl
-        << "xlabel('x(y=0) ";
-    }
     
-    xplot << "in (Km)');" << endl;
+    // This is the replacement in order to remove cases.
+    xplot << "xlabel('x(y=0) in (Km)');";
     
     myfile	<< "sol = " << "load('surface_values" << par->str_poisson << ".dat');" << endl << endl
     << "x = sol(:,1);" << endl
     << "y = sol(:,2);" << endl
     << "domain = "
-    << ((par->cases() == 2)?"y(:,1)":"x(:,1)") << ";" << endl;
+    << ((par->x2 == par->Ix)?"y(:,1)":"x(:,1)") << ";" << endl;
     
     myfile	<< "horizontal = sol(:,3);" << endl
     << "vertical   = sol(:,4);" << endl

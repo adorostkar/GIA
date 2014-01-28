@@ -28,9 +28,6 @@
 const char* const short_options = "ha:d:p:y:z:i:s:t:r:f:k:g:ewumv";
 // Long options
 const struct option long_options[] = { // An array describing valid long options.
-	{ "footing",		no_argument,		0,		'0' },
-	{ "large",			no_argument,		0,		'1' },
-	{ "uniform",		no_argument,		0,		'2' },
 	{ "file",			no_argument,		0,		'3' },
 	{ "writeback",		no_argument,		0,		'4' },
     { "dim",    		required_argument,	0,		'5' },
@@ -99,7 +96,7 @@ public:
     void set_default();
 
     // get case number
-    int cases(){return cas;}
+//    int cases(){return cas;}
 
     /*!
      * \brief paramFile name of the file to read or write parameters to.
@@ -114,7 +111,6 @@ public:
 	int							solver,precond, info;
 	int							system_iter,surf_samples;
 
-	double						adv, div;
 	double						load, weight;
 	double						gravity;
 	double						InvMatPreTOL,SchurTOL,TOL,threshold;
@@ -175,7 +171,7 @@ private:
     bool						verbose;
     // Problem case number. This can only be retrieved and can't be changed
     // during runtime.
-    int                         cas;
+//    int                         cas;
 
     // Instance flag
     static bool instanceFlag;
@@ -183,11 +179,11 @@ private:
     static parameters *singlton;
 
     //default constructor
-    parameters(const std::string f = "vardata.conf");
+    parameters();
     // If the application does not have any command line options
     // this works the same as default constructor
     // If no --file options is passed, the program assumes default file is used.
-    parameters(int argc, char* argv[], const std::string f = "vardata.conf");
+    parameters(int argc, char* argv[]);
 
 	// Used to convert string boundary type to enum boundary types
 	boundary_Type str2boundary(std::string tempSt);
