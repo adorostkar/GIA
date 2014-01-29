@@ -53,6 +53,7 @@
 #include "parameters.h"
 #include "preconditioner.h"
 #include "rhs.h"
+#include "SurfaceDataOut.h"
 
 #ifndef ELASTIC_H
 #define ELASTIC_H
@@ -852,7 +853,8 @@ Elastic::ElasticProblem<dim>::output_surface() {
         data_component_interpretation
                 .push_back (DataComponentInterpretation::component_is_scalar);
 
-        DataOutFaces<dim> data_out;
+        SurfaceDataOut<dim> data_out;
+//        DataOutFaces<dim> data_out;
         data_out.attach_dof_handler (dof_handler);
         data_out.add_data_vector (solution, solution_names,
                                   DataOutFaces<dim>::type_dof_data,
@@ -860,16 +862,14 @@ Elastic::ElasticProblem<dim>::output_surface() {
         data_out.build_patches ();
     
         ostringstream filename;
-        filename << "surfaces_" << par->POISSON	<< ".vtu";
+        filename << "surface_" << par->str_poisson	<< ".gnuplot";
 
         ofstream output (filename.str().c_str());
-        data_out.write_vtu (output);
-        info_0 << "    DEALII extracting surface values ..." << endl;
+        data_out.write_gnuplot (output);
+        info_0 << "   DEALII extracting surface values ..." << endl;
 }
 
 /*!
- * TODO: This method should be replaced with
- * Deal ii method DataOutFaces
  * This is deprecated since it will not work if the domain changes in time
  * dependent method
  */
