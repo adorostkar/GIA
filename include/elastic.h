@@ -932,15 +932,16 @@ template <int dim>
 void
 Elastic::ElasticProblem<dim>::generate_matlab_study(){
     int figure = 1;
-    
+    string extension;
     // Generate Matlab filename
     ostringstream tempOS;
+    ofstream myfile;
     if(par->print_matrices){
         tempOS << "matrices" << par->str_poisson << ".m";
-        string extension = tempOS.str().c_str();
+        extension = tempOS.str().c_str();
 
         // Open file
-        ofstream myfile(extension.c_str());
+        myfile.open(extension.c_str());
         if(!myfile.is_open()){
             cout << "Print_matlab: Unable to open file...";
             return;
