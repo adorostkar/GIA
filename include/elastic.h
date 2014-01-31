@@ -935,58 +935,59 @@ Elastic::ElasticProblem<dim>::generate_matlab_study(){
     
     // Generate Matlab filename
     ostringstream tempOS;
-    tempOS << "matrices" << par->str_poisson << ".m";
-    string extension = tempOS.str().c_str();
-    
-    // Open file
-    ofstream myfile(extension.c_str());
-    if(!myfile.is_open()){
-        cout << "Print_matlab: Unable to open file...";
-        return;
-    }
-    
-    myfile << "close all;clear;" << endl;
-    
     if(par->print_matrices){
-        int n_blocks = dim+1;
-        myfile << "%loading data" << std::endl;
-        for(int i=0; i<n_blocks; ++i){
-            for(int j=0; j<n_blocks; ++j){
-                string a = "data_a" + std::to_string(i) + std::to_string(j)
-                + " = load_sparse('data_a" + std::to_string(i) + std::to_string(j) + ".dat');";
-                string p = "data_p" + std::to_string(i) + std::to_string(j)
-                + " = load_sparse('data_p" + std::to_string(i) + std::to_string(j) + ".dat');";
-                myfile << a << endl;
-                myfile << p << endl;
-            }
+        tempOS << "matrices" << par->str_poisson << ".m";
+        string extension = tempOS.str().c_str();
+
+        // Open file
+        ofstream myfile(extension.c_str());
+        if(!myfile.is_open()){
+            cout << "Print_matlab: Unable to open file...";
+            return;
         }
-        myfile << "load('data_l_m.dat');"  << endl
-        << "load('data_l_p.dat');"  << endl;
-        
-        myfile << "% Creating A and P matrices" << std::endl
-        << "A = [";
-        for(int i=0; i<n_blocks; ++i){
-            for(int j=0; j<n_blocks; ++j){
-                string a = "data_a" + std::to_string(i) + std::to_string(j) + " ";
-                myfile << a;
+
+        myfile << "close all;clear;" << endl;
+
+        if(par->print_matrices){
+            int n_blocks = dim+1;
+            myfile << "%loading data" << std::endl;
+            for(int i=0; i<n_blocks; ++i){
+                for(int j=0; j<n_blocks; ++j){
+                    string a = "data_a" + std::to_string(i) + std::to_string(j)
+                            + " = load_sparse('data_a" + std::to_string(i) + std::to_string(j) + ".dat');";
+                    string p = "data_p" + std::to_string(i) + std::to_string(j)
+                            + " = load_sparse('data_p" + std::to_string(i) + std::to_string(j) + ".dat');";
+                    myfile << a << endl;
+                    myfile << p << endl;
+                }
             }
-            myfile << ";" << endl;
-        }
-        myfile << "];" <<endl;
-        
-        
-        myfile << "P = [";
-        for(int i=0; i<n_blocks; ++i){
-            for(int j=0; j<n_blocks; ++j){
-                string p = "data_p" + std::to_string(i) + std::to_string(j) + " ";
-                myfile << p;
+            myfile << "load('data_l_m.dat');"  << endl
+                   << "load('data_l_p.dat');"  << endl;
+
+            myfile << "% Creating A and P matrices" << std::endl
+                   << "A = [";
+            for(int i=0; i<n_blocks; ++i){
+                for(int j=0; j<n_blocks; ++j){
+                    string a = "data_a" + std::to_string(i) + std::to_string(j) + " ";
+                    myfile << a;
+                }
+                myfile << ";" << endl;
             }
-            myfile << ";" << endl;
+            myfile << "];" <<endl;
+
+
+            myfile << "P = [";
+            for(int i=0; i<n_blocks; ++i){
+                for(int j=0; j<n_blocks; ++j){
+                    string p = "data_p" + std::to_string(i) + std::to_string(j) + " ";
+                    myfile << p;
+                }
+                myfile << ";" << endl;
+            }
+            myfile << "];";
         }
-        myfile << "];";
+        myfile.close();
     }
-    myfile.close();
-    
     // Create another file
     tempOS.clear();
     tempOS.str("");
@@ -1007,88 +1008,90 @@ Elastic::ElasticProblem<dim>::generate_matlab_study(){
     xplot << "xlabel('x(y=0) in (Km)');";
     
     myfile	<< "sol = " << "load('surface_values" << par->str_poisson << ".dat');" << endl << endl
-    << "x = sol(:,1);" << endl
-    << "y = sol(:,2);" << endl
-    << "domain = "
-    << ((par->x2 == par->Ix)?"y(:,1)":"x(:,1)") << ";" << endl;
+            << "x = sol(:,1);" << endl
+            << "y = sol(:,2);" << endl
+            << "domain = "
+            << ((par->x2 == par->Ix)?"y(:,1)":"x(:,1)") << ";" << endl;
     
     myfile	<< "horizontal = sol(:,3);" << endl
-    << "vertical   = sol(:,4);" << endl
-    << "pressure   = sol(:,5);" << endl << endl;
+            << "vertical   = sol(:,4);" << endl
+            << "pressure   = sol(:,5);" << endl << endl;
     
     myfile	<< "% Change default axes fonts." << endl
-    << "set(0,'DefaultAxesFontName', 'Times New Roman');" << endl
-    << "set(0,'DefaultAxesFontSize', 16);" << endl << endl;
+            << "set(0,'DefaultAxesFontName', 'Times New Roman');" << endl
+            << "set(0,'DefaultAxesFontSize', 16);" << endl << endl;
     
     myfile	<< "% Change default text fonts." << endl
-    << "set(0,'DefaultTextFontname', 'Times New Roman');" << endl
-    << "set(0,'DefaultTextFontSize', 16);" << endl << endl;
+            << "set(0,'DefaultTextFontname', 'Times New Roman');" << endl
+            << "set(0,'DefaultTextFontSize', 16);" << endl << endl;
     
     myfile	<< "figure("<<figure<<"); plot(domain, horizontal); %title('horizontal');" << endl
-    << xplot.str()
-    << "ylabel('Horizontal displacement in (m)');" << endl
-    << "grid on" << endl
-    << "%set(gca, 'GridLineStyle', '-');" << endl;
+            << xplot.str()
+            << "ylabel('Horizontal displacement in (m)');" << endl
+            << "grid on" << endl
+            << "%set(gca, 'GridLineStyle', '-');" << endl;
     figure++;
     
     myfile	<< "figure("<< figure <<"); plot(domain,  vertical); %title('vertical');" << endl
-    << xplot.str()
-    << "ylabel('Vertical displacement in (m)');" << endl
-    << "grid on" << endl
-    << "%set(gca, 'GridLineStyle', '-');" << endl;
+            << xplot.str()
+            << "ylabel('Vertical displacement in (m)');" << endl
+            << "grid on" << endl
+            << "%set(gca, 'GridLineStyle', '-');" << endl;
     figure++;
     
     myfile	<< "% analytical constants, alpha = rho_i*h/rho_r, delta = (1+v)(1-2v)/(E(1-v)), 1/(2mu + lambda) = (1+v)(1-2v)/(E(1-v))" << endl
-    << "v = 0.2; E = " << (par->S*par->YOUNG) << "; g = " << par->g0 << "; h = "<< par->h <<";" << endl
-    << "rho_i = "<< par->rho_i << "; rho_r = " << par->rho_r << ";" << endl
-    << "alpha = "<< par->alpha <<";" << endl
-    << "beta  = "<< par->beta <<";" << endl
-    << "delta = (1+v)*(1-2*v)/(E*(1-v));" << endl
-    << "gamma = "<< par->gamma <<";" << endl << endl;
+            << "v = 0.2; E = " << (par->S*par->YOUNG) << "; g = " << par->g0 << "; h = "<< par->h <<";" << endl
+            << "rho_i = "<< par->rho_i << "; rho_r = " << par->rho_r << ";" << endl
+            << "alpha = "<< par->alpha <<";" << endl
+            << "beta  = "<< par->beta <<";" << endl
+            << "delta = (1+v)*(1-2*v)/(E*(1-v));" << endl
+            << "gamma = "<< par->gamma <<";" << endl << endl;
     
     myfile	<< "yb = " << (par->L*par->y1) << ";" << endl
-    << "A1 = (1+v)*(1-2*v)/(E*(1-v))*g*rho_i*h; % rho_i" << endl
-    << "mu = E/(2*(1+v));" << endl
-    << "lambda = E*v/((1+v)*(1-2*v));" << endl << endl;
+            << "A1 = (1+v)*(1-2*v)/(E*(1-v))*g*rho_i*h; % rho_i" << endl
+            << "mu = E/(2*(1+v));" << endl
+            << "lambda = E*v/((1+v)*(1-2*v));" << endl << endl;
     
     myfile	<< "y = 1000*domain; %yb : abs(yb)/1000:0.0;" << endl
-    << "v1 = A1.*(yb-y);" << endl
-    << "v2 = alpha.*(exp(rho_r*g*delta.*yb)-exp(rho_r*g*delta.*y));" << endl
-    << "p = -rho_i*g*h*gamma;" << endl << endl;
+            << "v1 = A1.*(yb-y);" << endl
+            << "v2 = alpha.*(exp(rho_r*g*delta.*yb)-exp(rho_r*g*delta.*y));" << endl
+            << "p = -rho_i*g*h*gamma;" << endl << endl;
     
     myfile	<< "%figure("<<figure<<"); plot(y,v1,y,v2);" << endl;
     figure++;
     
     myfile	<< "p1 = sol(:,4);" << endl
-    << "%figure("<<figure<<"); plot(domain,p1,domain,p);" << endl
-    << endl;
+            << "%figure("<<figure<<"); plot(domain,p1,domain,p);" << endl
+            << endl;
     
     myfile.close();
     
-    // Open file
-    myfile.open("load_sparse.m");
-    if(!myfile.is_open()){
-        cout << "Print_matlab: Unable to open file...";
-        return;
+    if(par->print_matrices){
+        // Open file
+        myfile.open("load_sparse.m");
+        if(!myfile.is_open()){
+            cout << "Print_matlab: Unable to open file...";
+            return;
+        }
+
+        myfile << "function mat = load_sparse(f)" << endl
+               << "% Reading output matrix from deal.II into matlab" << endl
+               << "fid = fopen(f, 'rt');" << endl
+               << "[m n] = fscanf(fid, '(%d,%d) %e\\n'); % has the particular format" << endl
+               << "% reorganizes the data" << endl
+               << "count = 1;" << endl
+               << "for k = [1:3:n]" << endl
+               << "    I(count) = m(k)+1;" << endl
+               << "    J(count) = m(k+1)+1;" << endl
+               << "    v(count) = m(k+2);" << endl
+               << "    count = count + 1;" << endl
+               << "end" << endl
+               << "fclose(fid);" << endl
+               << "% create a sparse stiffness matrix with the input" << endl
+               << "mat=sparse(I,J,v);" << endl
+               << "end" << endl;
+        myfile.close();
     }
-    
-    myfile << "function mat = load_sparse(f)" << endl
-    << "% Reading output matrix from deal.II into matlab" << endl
-    << "fid = fopen(f, 'rt');" << endl
-    << "[m n] = fscanf(fid, '(%d,%d) %e\\n'); % has the particular format" << endl
-    << "% reorganizes the data" << endl
-    << "count = 1;" << endl
-    << "for k = [1:3:n]" << endl
-    << "    I(count) = m(k)+1;" << endl
-    << "    J(count) = m(k+1)+1;" << endl
-    << "    v(count) = m(k+2);" << endl
-    << "    count = count + 1;" << endl
-    << "end" << endl
-    << "fclose(fid);" << endl
-    << "% create a sparse stiffness matrix with the input" << endl
-    << "mat=sparse(I,J,v);" << endl
-    << "end" << endl;
-    myfile.close();
 }
 
 // Create a matlab file with matrices
