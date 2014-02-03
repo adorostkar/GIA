@@ -8,6 +8,7 @@
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/timer.h>
 #include <deal.II/base/utilities.h>
+#include <deal.II/dofs/block_info.h>
 #include <deal.II/dofs/dof_accessor.h>
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/dofs/dof_renumbering.h>
@@ -105,7 +106,6 @@ namespace Elastic
         // Computer the error
         void compute_errors () const;
         void output_results ();
-        void surface_values () __attribute__ ((deprecated));
         void output_surface ();
         
         const unsigned int						degree;
@@ -360,15 +360,42 @@ Elastic::ElasticProblem<dim>::assemble_system ()
     const unsigned int   n_q_points      = quadrature_formula.size();
     const unsigned int   n_face_q_points = face_quadrature_formula.size();
     
+    // Block information for reordering and preconditioner computing.
+    dof_handler.initialize_local_block_info();
+    BlockInfo bf = dof_handler.block_info();
+    BlockIndices bi = bf.local();
+    
     // deal.ii local structure
-    const unsigned int	 	dim_disp = 9,				// Q2 nodes
-    dim_u = dim*dim_disp,		// dim * Q2 nodes
-    dim_p = 4;					// 1 * Q1 nodes
+    int *local_dim = new int[n_blocks];
+    int *local_dim_start = new int[n_blocks];
     
-    unsigned int 			l_u[] = {0,3,6,9,12,14,16,18,20, 1,4,7,10,13,15,17,19,21};
-    unsigned int 			l_p[] = {2,5,8,11};
+    unsigned int dim_u = 0,		// dim * Q2 nodes
+            dim_p = 0;// 1 * Q1 nodes
     
-    unsigned int 			order[] = {0,3,6, 9,12,14,16,18,20, 1,4,7,10,13,15,17,19,21, 2,5,8,11};// use guido recommendation
+    // for components
+    for(int i = 0; i< n_blocks-1; i++){
+        local_dim[i]        = bi.block_size(i); // Size of the blocks in local matrix
+        local_dim_start[i]  = bi.block_start(i); // Starting index of the blocks in the reordered local matrix
+        dim_u += bi.block_size(i);
+    }
+    //for pressure
+    local_dim[n_blocks-1]        = bi.block_size(n_blocks-1); // Size of the blocks in local matrix
+    local_dim_start[n_blocks-1]  = bi.block_start(n_blocks-1); // Starting index of the blocks in the reordered local matrix
+    dim_p = bi.block_size(n_blocks-1);
+
+    int            *l_u = new int[dim_u];
+    int            *l_p = new int[dim_p];
+    int            *order = new int[dofs_per_cell];
+
+    for(int i = 0; i < dofs_per_cell; i++){
+        unsigned int ir = bf.renumber(i);
+        order[ir]=i;
+    }
+    for(int i = 0; i < dim_u; i++)
+        l_u[i] = order[i];
+
+    for(int i = 0; i < dim_p; i++)
+        l_p[i] = order[i+dim_u];
     
     FullMatrix<double>	cell_matrix  (dofs_per_cell, dofs_per_cell),
     cell_ordered (dofs_per_cell, dofs_per_cell),
@@ -412,7 +439,7 @@ Elastic::ElasticProblem<dim>::assemble_system ()
     
     bool first = true;
     unsigned int counter = 0;
-    double h, aux_p;
+    double h;
     
     typename DoFHandler<dim>::active_cell_iterator
     cell = dof_handler.begin_active(),
@@ -497,36 +524,30 @@ Elastic::ElasticProblem<dim>::assemble_system ()
         
         // Local assemble and Schur generation
         // extract here using velocities, pressure
+        // This is the ordered matrices, i and j corespond to ordered values
         for (unsigned int i=0; i<dofs_per_cell; ++i){// shape index i
             for (unsigned int j=0; j < dofs_per_cell; ++j){// shape index j
                 
                 cell_ordered(i,j) = cell_matrix(order[i],order[j]); // local matrix ordered by u0,u1...un,v0,v1...vn,p0,p1...pm
                 
-                if( i < dim_u ){
-                    if(j < dim_u){// i < dim_u, j <  dim_u
-                        l_A(i,j)  = cell_ordered(i,j);
-                        aux(i,j)  = l_A(i,j);
-                        
-                        // bgn Diagonal 11 block
-                        if(par->precond == 0){
-                            if(i < dim_disp && j < dim_disp){
-                                l_Adiag(i,j) = cell_ordered(i,j); // first block
-                            }else if(j >= dim_disp){
-                                l_Adiag(i,j) = cell_ordered(i,j); // second block
-                            }
+                if(i < dim_u && j < dim_u){
+                    l_A(i,j)  = cell_ordered(i,j);
+                    aux(i,j)  = l_A(i,j);
+                    for(int k = 0; k < n_blocks-1; k++){
+                        int dim_sk = local_dim_start[k];
+                        int dim_ek = local_dim_start[k+1];
+                        if(i >= dim_sk && i < dim_ek &&
+                                j >= dim_sk && j < dim_ek){
+                            l_Adiag(i,j) = cell_ordered(i,j); // second block
                         }
-                        // end Diagonal 11 block
-                        
-                    }else{// i < dim_u, j >= dim_u
-                        l_Bt(i,j-dim_u) = cell_ordered(i,j);
                     }
-                }else{
-                    if(j < dim_u){// i >= dim_u, j <  dim_u
-                        l_B(i-dim_u,j)  = cell_ordered(i,j);
-                    }else{// i >= dim_u, j >= dim_u
-                        l_C(i-dim_u,j-dim_u)  = cell_ordered(i,j);
-                        l_S(i-dim_u,j-dim_u)  = l_C(i-dim_u,j-dim_u); // -C ... look at the sign
-                    }
+                }else if(i < dim_u && j >= dim_u){
+                    l_Bt(i,j-dim_u) = cell_ordered(i,j);
+                }else if(i >= dim_u && j < dim_u){
+                    l_B(i-dim_u,j)  = cell_ordered(i,j);
+                }else if(i >= dim_u && j >= dim_u){
+                    l_C(i-dim_u,j-dim_u)  = cell_ordered(i,j);
+                    l_S(i-dim_u,j-dim_u)  = l_C(i-dim_u,j-dim_u); // -C ... look at the sign
                 }
             }
         }
@@ -587,6 +608,9 @@ Elastic::ElasticProblem<dim>::assemble_system ()
         first = false;
         counter++;
     } // end cell
+    free(l_u);
+    free(l_p);
+    free(order);
 }
 
 /**
@@ -720,34 +744,6 @@ Elastic::ElasticProblem<dim>::compute_errors () const
 
 template <int dim>
 void
-Elastic::ElasticProblem<dim>::output_results ()
-{
-    using namespace std;
-    vector<string> solution_names (dim, "displacements");
-    solution_names.push_back ("pressure");
-    
-    vector<DataComponentInterpretation::DataComponentInterpretation>
-            data_component_interpretation(dim,
-                                          DataComponentInterpretation::component_is_part_of_vector);
-    data_component_interpretation
-    .push_back (DataComponentInterpretation::component_is_scalar);
-    
-    DataOut<dim> data_out;
-    data_out.attach_dof_handler (dof_handler);
-    data_out.add_data_vector (solution, solution_names,
-                              DataOut<dim>::type_dof_data,
-                              data_component_interpretation);
-    data_out.build_patches ();
-    
-    ostringstream filename;
-    filename << "solution_" << par->POISSON	<< ".vtk";
-    
-    ofstream output (filename.str().c_str());
-    data_out.write_vtk (output);
-}
-
-template <int dim>
-void
 Elastic::ElasticProblem<dim>::run ()
 {
     double t_ass=0, t_solve=0, t_tot=0;
@@ -780,6 +776,8 @@ Elastic::ElasticProblem<dim>::run ()
             }
         }
         write_vector(system_rhs,"rhs");
+        // printing: matrices, par->info
+        generate_matlab_study();
     }
     
     int inv_iter = 0, schur_iter = 0;
@@ -803,16 +801,10 @@ Elastic::ElasticProblem<dim>::run ()
         
         output_results ();
         output_surface();
-        surface_values ();
         
         if(par->x2 == par->Ix )
             compute_errors ();
-    }
-    
-    // printing: matrices, par->info
-    generate_matlab_study();
 
-    if(par->solve){
         int tempSpace = 15;
         info_0   << "GMRES iterations: system(<inv>,<schur>) = "
         << par->system_iter
@@ -836,9 +828,36 @@ Elastic::ElasticProblem<dim>::run ()
     }
 }
 
+template <int dim>
+void
+Elastic::ElasticProblem<dim>::output_results ()
+{
+    using namespace std;
+    vector<string> solution_names (dim, "displacements");
+    solution_names.push_back ("pressure");
+
+    vector<DataComponentInterpretation::DataComponentInterpretation>
+            data_component_interpretation(dim,
+                                          DataComponentInterpretation::component_is_part_of_vector);
+    data_component_interpretation
+    .push_back (DataComponentInterpretation::component_is_scalar);
+
+    DataOut<dim> data_out;
+    data_out.attach_dof_handler (dof_handler);
+    data_out.add_data_vector (solution, solution_names,
+                              DataOut<dim>::type_dof_data,
+                              data_component_interpretation);
+    data_out.build_patches ();
+
+    ostringstream filename;
+    filename << "solution_" << par->POISSON	<< ".vtu";
+
+    ofstream output (filename.str().c_str());
+    data_out.write_vtu (output);
+}
+
 /*!
  * Output surface values to file.
- * @TODO: output only displacements of upper boundary
  */
 template <int dim>
 void
@@ -854,7 +873,6 @@ Elastic::ElasticProblem<dim>::output_surface() {
                 .push_back (DataComponentInterpretation::component_is_scalar);
 
         SurfaceDataOut<dim> data_out;
-//        DataOutFaces<dim> data_out;
         data_out.attach_dof_handler (dof_handler);
         data_out.add_data_vector (solution, solution_names,
                                   DataOutFaces<dim>::type_dof_data,
@@ -866,55 +884,7 @@ Elastic::ElasticProblem<dim>::output_surface() {
 
         ofstream output (filename.str().c_str());
         data_out.write_gnuplot (output);
-        info_0 << "   DEALII extracting surface values ..." << endl;
-}
-
-/*!
- * This is deprecated since it will not work if the domain changes in time
- * dependent method
- */
-template <int dim>
-void
-Elastic::ElasticProblem<dim>::surface_values () {
-    const unsigned int n = par->surf_samples;
-    double dx;
-    
-    ostringstream filename;
-    filename << "surface_values" << par->str_poisson << ".dat";
-    std::ofstream detector_data(filename.str().c_str());
-    std::vector<Point<dim> > detector_locations;
-    
-    Vector<double> value(3);
-    
-    if(par->x2 == par->Ix){//uniform load
-            dx = (par->y2 - par->y1)/n;
-            for (unsigned int i = 0; i < n; ++i){
-                detector_locations.push_back (Point<dim> ( (par->x1 + par->x2 )*0.5,
-                                                          par->y2 - dx*i ));
-            }
-    }else{
-            dx = (par->x2 - par->x1)/n;
-            for (unsigned int i = 0; i < n; ++i){
-                detector_locations.push_back (Point<dim> ( par->x1 + dx*i,
-                                                          0.0 ));
-            }
-    }
-    
-    for (unsigned int i=0 ; i<detector_locations.size(); ++i){
-        
-        VectorTools::point_value (dof_handler,
-                                  solution,
-                                  detector_locations[i],
-                                  value);
-        // Detector location is rescaled to meters and then devided by 1e3 to be in Km
-        detector_data << (detector_locations[i](0)*par->L/1e3) << ", "
-        << (detector_locations[i](1)*par->L/1e3) << ", "
-        << value(0) << ", " << value(1) << ", " << (value(2)/par->L) << std::endl;
-    }
-    
-    info_0 << "... extracting surface values ..."
-    << " dx = " << dx << ", n = " << n
-    << std::endl;
+        info_0 << "   Extracting surface values ..." << endl;
 }
 
 // Change string to uppercase
@@ -936,163 +906,82 @@ Elastic::ElasticProblem<dim>::generate_matlab_study(){
     // Generate Matlab filename
     ostringstream tempOS;
     ofstream myfile;
-    if(par->print_matrices){
-        tempOS << "matrices" << par->str_poisson << ".m";
-        extension = tempOS.str().c_str();
 
-        // Open file
-        myfile.open(extension.c_str());
-        if(!myfile.is_open()){
-            cout << "Print_matlab: Unable to open file...";
-            return;
-        }
-
-        myfile << "close all;clear;" << endl;
-
-        if(par->print_matrices){
-            int n_blocks = dim+1;
-            myfile << "%loading data" << std::endl;
-            for(int i=0; i<n_blocks; ++i){
-                for(int j=0; j<n_blocks; ++j){
-                    string a = "data_a" + std::to_string(i) + std::to_string(j)
-                            + " = load_sparse('data_a" + std::to_string(i) + std::to_string(j) + ".dat');";
-                    string p = "data_p" + std::to_string(i) + std::to_string(j)
-                            + " = load_sparse('data_p" + std::to_string(i) + std::to_string(j) + ".dat');";
-                    myfile << a << endl;
-                    myfile << p << endl;
-                }
-            }
-            myfile << "load('data_l_m.dat');"  << endl
-                   << "load('data_l_p.dat');"  << endl;
-
-            myfile << "% Creating A and P matrices" << std::endl
-                   << "A = [";
-            for(int i=0; i<n_blocks; ++i){
-                for(int j=0; j<n_blocks; ++j){
-                    string a = "data_a" + std::to_string(i) + std::to_string(j) + " ";
-                    myfile << a;
-                }
-                myfile << ";" << endl;
-            }
-            myfile << "];" <<endl;
-
-
-            myfile << "P = [";
-            for(int i=0; i<n_blocks; ++i){
-                for(int j=0; j<n_blocks; ++j){
-                    string p = "data_p" + std::to_string(i) + std::to_string(j) + " ";
-                    myfile << p;
-                }
-                myfile << ";" << endl;
-            }
-            myfile << "];";
-        }
-        myfile.close();
-    }
-    // Create another file
-    tempOS.clear();
-    tempOS.str("");
-    tempOS << "SV" << par->str_poisson << ".m";
+    tempOS << "matrices" << par->str_poisson << ".m";
     extension = tempOS.str().c_str();
-    
+
     // Open file
     myfile.open(extension.c_str());
     if(!myfile.is_open()){
         cout << "Print_matlab: Unable to open file...";
         return;
     }
-    
-    std::stringstream xplot;
-    
-    
-    // This is the replacement in order to remove cases.
-    xplot << "xlabel('x(y=0) in (Km)');";
-    
-    myfile	<< "sol = " << "load('surface_values" << par->str_poisson << ".dat');" << endl << endl
-            << "x = sol(:,1);" << endl
-            << "y = sol(:,2);" << endl
-            << "domain = "
-            << ((par->x2 == par->Ix)?"y(:,1)":"x(:,1)") << ";" << endl;
-    
-    myfile	<< "horizontal = sol(:,3);" << endl
-            << "vertical   = sol(:,4);" << endl
-            << "pressure   = sol(:,5);" << endl << endl;
-    
-    myfile	<< "% Change default axes fonts." << endl
-            << "set(0,'DefaultAxesFontName', 'Times New Roman');" << endl
-            << "set(0,'DefaultAxesFontSize', 16);" << endl << endl;
-    
-    myfile	<< "% Change default text fonts." << endl
-            << "set(0,'DefaultTextFontname', 'Times New Roman');" << endl
-            << "set(0,'DefaultTextFontSize', 16);" << endl << endl;
-    
-    myfile	<< "figure("<<figure<<"); plot(domain, horizontal); %title('horizontal');" << endl
-            << xplot.str()
-            << "ylabel('Horizontal displacement in (m)');" << endl
-            << "grid on" << endl
-            << "%set(gca, 'GridLineStyle', '-');" << endl;
-    figure++;
-    
-    myfile	<< "figure("<< figure <<"); plot(domain,  vertical); %title('vertical');" << endl
-            << xplot.str()
-            << "ylabel('Vertical displacement in (m)');" << endl
-            << "grid on" << endl
-            << "%set(gca, 'GridLineStyle', '-');" << endl;
-    figure++;
-    
-    myfile	<< "% analytical constants, alpha = rho_i*h/rho_r, delta = (1+v)(1-2v)/(E(1-v)), 1/(2mu + lambda) = (1+v)(1-2v)/(E(1-v))" << endl
-            << "v = 0.2; E = " << (par->S*par->YOUNG) << "; g = " << par->g0 << "; h = "<< par->h <<";" << endl
-            << "rho_i = "<< par->rho_i << "; rho_r = " << par->rho_r << ";" << endl
-            << "alpha = "<< par->alpha <<";" << endl
-            << "beta  = "<< par->beta <<";" << endl
-            << "delta = (1+v)*(1-2*v)/(E*(1-v));" << endl
-            << "gamma = "<< par->gamma <<";" << endl << endl;
-    
-    myfile	<< "yb = " << (par->L*par->y1) << ";" << endl
-            << "A1 = (1+v)*(1-2*v)/(E*(1-v))*g*rho_i*h; % rho_i" << endl
-            << "mu = E/(2*(1+v));" << endl
-            << "lambda = E*v/((1+v)*(1-2*v));" << endl << endl;
-    
-    myfile	<< "y = 1000*domain; %yb : abs(yb)/1000:0.0;" << endl
-            << "v1 = A1.*(yb-y);" << endl
-            << "v2 = alpha.*(exp(rho_r*g*delta.*yb)-exp(rho_r*g*delta.*y));" << endl
-            << "p = -rho_i*g*h*gamma;" << endl << endl;
-    
-    myfile	<< "%figure("<<figure<<"); plot(y,v1,y,v2);" << endl;
-    figure++;
-    
-    myfile	<< "p1 = sol(:,4);" << endl
-            << "%figure("<<figure<<"); plot(domain,p1,domain,p);" << endl
-            << endl;
-    
-    myfile.close();
-    
-    if(par->print_matrices){
-        // Open file
-        myfile.open("load_sparse.m");
-        if(!myfile.is_open()){
-            cout << "Print_matlab: Unable to open file...";
-            return;
-        }
 
-        myfile << "function mat = load_sparse(f)" << endl
-               << "% Reading output matrix from deal.II into matlab" << endl
-               << "fid = fopen(f, 'rt');" << endl
-               << "[m n] = fscanf(fid, '(%d,%d) %e\\n'); % has the particular format" << endl
-               << "% reorganizes the data" << endl
-               << "count = 1;" << endl
-               << "for k = [1:3:n]" << endl
-               << "    I(count) = m(k)+1;" << endl
-               << "    J(count) = m(k+1)+1;" << endl
-               << "    v(count) = m(k+2);" << endl
-               << "    count = count + 1;" << endl
-               << "end" << endl
-               << "fclose(fid);" << endl
-               << "% create a sparse stiffness matrix with the input" << endl
-               << "mat=sparse(I,J,v);" << endl
-               << "end" << endl;
-        myfile.close();
+    myfile << "close all;clear;" << endl;
+
+    int n_blocks = dim+1;
+    myfile << "%loading data" << std::endl;
+    for(int i=0; i<n_blocks; ++i){
+        for(int j=0; j<n_blocks; ++j){
+            string a = "data_a" + std::to_string(i) + std::to_string(j)
+                    + " = load_sparse('data_a" + std::to_string(i) + std::to_string(j) + ".dat');";
+            string p = "data_p" + std::to_string(i) + std::to_string(j)
+                    + " = load_sparse('data_p" + std::to_string(i) + std::to_string(j) + ".dat');";
+            myfile << a << endl;
+            myfile << p << endl;
+        }
     }
+    myfile << "load('data_l_m.dat');"  << endl
+           << "load('data_l_p.dat');"  << endl;
+
+    myfile << "% Creating A and P matrices" << std::endl
+           << "A = [";
+    for(int i=0; i<n_blocks; ++i){
+        for(int j=0; j<n_blocks; ++j){
+            string a = "data_a" + std::to_string(i) + std::to_string(j) + " ";
+            myfile << a;
+        }
+        myfile << ";" << endl;
+    }
+    myfile << "];" <<endl;
+
+
+    myfile << "P = [";
+    for(int i=0; i<n_blocks; ++i){
+        for(int j=0; j<n_blocks; ++j){
+            string p = "data_p" + std::to_string(i) + std::to_string(j) + " ";
+            myfile << p;
+        }
+        myfile << ";" << endl;
+    }
+    myfile << "];";
+
+    myfile.close();
+
+    // Open file
+    myfile.open("load_sparse.m");
+    if(!myfile.is_open()){
+        cout << "Print_matlab: Unable to open file...";
+        return;
+    }
+
+    myfile << "function mat = load_sparse(f)" << endl
+           << "% Reading output matrix from deal.II into matlab" << endl
+           << "fid = fopen(f, 'rt');" << endl
+           << "[m n] = fscanf(fid, '(%d,%d) %e\\n'); % has the particular format" << endl
+           << "% reorganizes the data" << endl
+           << "count = 1;" << endl
+           << "for k = [1:3:n]" << endl
+           << "    I(count) = m(k)+1;" << endl
+           << "    J(count) = m(k+1)+1;" << endl
+           << "    v(count) = m(k+2);" << endl
+           << "    count = count + 1;" << endl
+           << "end" << endl
+           << "fclose(fid);" << endl
+           << "% create a sparse stiffness matrix with the input" << endl
+           << "mat=sparse(I,J,v);" << endl
+           << "end" << endl;
+    myfile.close();
 }
 
 // Create a matlab file with matrices
