@@ -1,130 +1,58 @@
-/** TODO:
- - Add argument check. i.e boundaries for the arguments that get int or double
- - Find a way to add variables added to struct long_options automatically to
-    print_ methods and help method.
-    + Idea: create a discription variable and iterate through that.
+/** TODO
  */
-
-// include headers that implement a archive in simple text format
-#include <sys/stat.h>
-
-#include <list>
-#include <iostream>
-#include <cmath>
-#include <vector>
-#include <getopt.h>
+#include <boost/program_options.hpp>
 #include <cstdlib>
 #include <cstdio>
-#include <iomanip>
 #include <fstream>
-#include <sstream>
+#include <iostream>
+#include <iomanip>
+#include <vector>
 #include <string>
 #include <string.h>
-#include <algorithm>
+#include <sstream>
+#include <sys/stat.h>
 
-#ifndef PARAMETERS_H
-#define PARAMETERS_H
-// short options
-const char* const short_options = "ha:d:p:y:z:i:s:t:r:f:k:g:ewumv";
-// Long options
-const struct option long_options[] = { // An array describing valid long options.
-	{ "file",			no_argument,		0,		'3' },
-	{ "writeback",		no_argument,		0,		'4' },
-    { "dim",    		required_argument,	0,		'5' },
-	{ "adv",			required_argument,	0,		'a' },
-	{ "div",			required_argument,	0,		'd' },
-	{ "elastic",		no_argument,		0,		'e' },
-	{ "surf_samples",	required_argument,	0,		'f' },
-	{ "precond",		required_argument,	0,		'g' },
-	{ "help",			no_argument,		0,		'h' },
-	{ "inv_tol",		required_argument,	0,		'i' },
-	{ "info",			required_argument,	0,		'k' },
-	{ "matlab_print",	no_argument,		0,		'm' },
-	{ "poisson",		required_argument,	0,		'p' },
-	{ "refinements",	required_argument,	NULL,	'r' },
-	{ "schur_tol",		required_argument,	0,		's' },
-	{ "system_tol",		required_argument,	0,		't' },
-	{ "unique_schur",	no_argument,		0,		'u' },
-	{ "verbose",		0,					NULL,	'v' },
-	{ "weight",			no_argument,		0,		'w' },
-	{ "young",			required_argument,	0,		'y' },
-	{ "threshold",		required_argument,	0,		'z' },
-	{ NULL,				0,					NULL,	0   }   /* Required at end of array.  */
-	};
+#ifndef PARAMETERS_H_
+#define PARAMETERS_H_
 
 // Boundary types enumerator,
 // Different available boundaries.
-enum boundary_Type {
-	NEUMANN = 0,
-	NO_SLIP = 1,
-    V_SLIP  = 2,
-    LOAD    = 3,
-    FREE    = 4
-	};
+struct bFlags{
+    enum boundary_Type {
+        NEUMANN = 1<<0,
+        NO_SLIP = 1<<1,
+        V_SLIP  = 1<<2,
+        LOAD    = 1<<3,
+        FREE    = 1<<4
+    };
+};
 
-// Parameter class,
-// This class contains all application options including the ones only seen by
-// application and the ones available to the user to change.
-// User can alter options by command line or by using an option file.
-class parameters
-{
+class parameters {
 public:
-    ~parameters();
-    static parameters* getInstance();
-    static parameters* getInstance(int _argc, char *_argv[]);
+    // Variables
+    std::string					param_file,
+    default_file;
 
-	// This method reads the parameters
-	// from the file(if no value is given, defaults will be used)
-	void read_Parameters();
-	// Write back parameters to file
-	void write_Parameters();
-	// This method reads the command line options
-	void parse_command_line(int argc, char** argv);
+    int							dimension, degree,
+    refinements,
+    xdivisions, ydivisions,
+    info, // {0,1,2}
+    system_iter;
 
-	// findout the filename fo parameter file
-	void find_filename(int argc, char** argv);
-	// Print argument usage
-	void print_usage(int exitNum);
-
-	// Print parameter values
-	void print_values();
-
-	// Print variable settings, usefull information for the problem
-	void print_variables();
-
-	// Set parameter values to default
-    void set_default();
-
-    // get case number
-//    int cases(){return cas;}
-
-    /*!
-     * \brief paramFile name of the file to read or write parameters to.
-     */
-	std::string					paramFile;
-	/* problem variables */
-
-	int							dimension, degree;
-	int							refinements;
-	int							xdivisions, ydivisions;
-	// info = {0,1,2}
-	int							solver,precond, info;
-	int							system_iter,surf_samples;
-
-	double						load, weight;
-	double						gravity;
-	double						InvMatPreTOL,SchurTOL,TOL,threshold;
-	double						YOUNG,POISSON,ETA;
-	double						rho_i,rho_r,g0;
-    double						x1,y1,x2,y2,Ix,h;
-    double						L,U,S,T; // Scaling parameters for length, displacement, Stress and time
+    double						load, weight,
+    gravity,
+    InvMatPreTOL, SchurTOL, TOL, threshold,
+    YOUNG, POISSON, ETA,
+    rho_i, rho_r, g0,
+    x1, x2, y1, y2, Ix, h,
+    L, U, S, T;
 
     /*!
      * \brief scale1 = L^2/(SU)
      * \brief scale2 = L/SU
      * \brief scale3 = (L/S)*rho_r*g
      */
-	double						scale1,scale2,scale3;
+    double						scale1, scale2, scale3;
 
     /*!
      * \brief alpha = rho_i*h/rho_r
@@ -132,14 +60,14 @@ public:
      * \brief delta = (1+v)(1-2v)/(E(1-v)) = 1/(2*mu + lambda)
      * \brief gamma = 2v(1+v)/E(1-v) = 1/(2*beta + mu)
      */
-	double						alpha, beta, delta, gamma;
+    double						alpha, beta, delta, gamma;
 
     /*!
      * \brief print_local prints local matrices to output
      * \brief print_matrices prints global matrices to output
      * \brief one_schur_it uses one iteration to compute Schure
      */
-	bool						print_local,print_matrices, one_schur_it;
+    bool						precond, print_local,print_matrices, one_schur_it;
 
     /*!
      * \brief load_enabled is load enabled on the surface.
@@ -147,54 +75,50 @@ public:
      * \brief adv_enabled is advection term is enabled.
      * \brief div_enabled id divergance term is enabled.
      */
-	bool						load_enabled,weight_enabled,adv_enabled,div_enabled;
-    /*!
-     * \brief solve is system should be solved or not
-     * usefull if one is testing for issues in assembly.
-     */
-	bool						solve;
+    bool						load_enabled,weight_enabled,adv_enabled,div_enabled;
 
-    /*!
-     * \brief writeback write parameters back to file
-     */
-    bool						writeback;
-	
-    boundary_Type				b_ice, b_up, b_left, b_right, b_bottom;
-    std::vector<unsigned int>		inv_iterations, schur_iterations;
-	
-	std::string					str_poisson;
-	std::stringstream			dofs;
+    bFlags::boundary_Type		b_ice, b_up, b_left, b_right, b_bottom;
+    std::vector<unsigned int>	inv_iterations, schur_iterations;
+
+    std::string					str_poisson;
+    std::stringstream			dofs;
+
+
+    // Methods
+    ~parameters();
+    static parameters* getInstance();
+    static parameters* getInstance(int _argc, char *_argv[]);
+
+    void write_sample_file();
+    std::ostream &print_variables(std::ostream & str);
+    std::ostream &print_values(std::ostream &ostr);
 private:
-    /*!
-     * \brief verbose is parameters are verbose.
-     */
-    bool						verbose;
-    // Problem case number. This can only be retrieved and can't be changed
-    // during runtime.
-//    int                         cas;
-
+    // Variables
+    boost::program_options::options_description general;
+    boost::program_options::options_description vars;
+    boost::program_options::options_description cmdLine_options;
     // Instance flag
     static bool instanceFlag;
     // Instance
     static parameters *singlton;
 
-    //default constructor
+    // Methods
     parameters();
-    // If the application does not have any command line options
-    // this works the same as default constructor
-    // If no --file options is passed, the program assumes default file is used.
     parameters(int argc, char* argv[]);
-
-	// Used to convert string boundary type to enum boundary types
-	boundary_Type str2boundary(std::string tempSt);
-	// convert boundaries to text
-	std::string boudary2str(boundary_Type bt);
-    
-    bool fexists();
-
-    // Compute additional parameters i.e. alpha, beta, gamma, delta, g0
-    // scale1, scale2, weight, load, adv_enabled, div_enabled, scale2
-    // inv_iteration, schure_iterations
+    void set_env_vars();
     void compute_additionals();
+    void setup_variables_from_file(std::string filename);
+    void setup_variables_from_cmd(boost::program_options::variables_map & vm);
+
+    bFlags::boundary_Type str2boundary(std::string tempSt);
+    // convert boundaries to text
+    std::string boudary2str(bFlags::boundary_Type bt);
+
+    bool fexists(std::string filename);
+    std::vector<std::string>& split(const std::string &s, char delim, std::vector<std::string> &elems);
+    std::vector<std::string> split(const std::string &s, char delim);
+    void set_values(std::vector<std::string>&);
+    void validate_options();
 };
-#endif
+
+#endif /* PARAMETERS_H_ */

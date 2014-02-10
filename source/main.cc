@@ -12,8 +12,7 @@ int main (int argc, char** argv)
 		// MPI_Init (&argc, &argv);
 		Utilities::MPI::MPI_InitFinalize mpi_initialization (argc, argv);
 		
-		// get parameters
-//		par = new parameters(argc,argv);
+        // get instance of parameters
         par = parameters::getInstance(argc, argv);
 		
 		ostringstream filename;

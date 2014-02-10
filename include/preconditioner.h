@@ -1,6 +1,5 @@
-/** TODO
-
-*/
+/*! TODO
+ */
 
 #include <deal.II/lac/trilinos_sparse_matrix.h>
 #include <deal.II/lac/trilinos_block_sparse_matrix.h>

@@ -1,5 +1,5 @@
 /* TODO
- 
+
  */
 
 #include <deal.II/base/convergence_table.h>
@@ -65,69 +65,69 @@ using namespace std;
 using namespace dealii;
 namespace Elastic
 {
-    // Solver structure
-    struct Solver {
-        typedef SolverGMRES<TrilinosWrappers::Vector>	inner;
-        typedef SolverGMRES<>	schur;
-    };
-    
-    template <int dim>
-    class ElasticProblem {
-    public:
+// Solver structure
+struct Solver {
+    typedef SolverGMRES<TrilinosWrappers::Vector>	inner;
+    typedef SolverGMRES<>	schur;
+};
+
+template <int dim>
+class ElasticProblem {
+public:
     ElasticProblem (const unsigned int degree, const int _info);
-        void run ();
-        
-    private:
-        // pointer to parameter object
-        parameters *par;
-        // conditional outputs
-        ConditionalOStream info_0, info_1, info_2;
-        // timer
-        TimerOutput computing_timer;
-        // Change string to uppercase
-        std::string to_upper(const std::string str);
-        
-        // Create matlab code
-        void generate_matlab_study();
-        // Write matrix to data file
-        void write_matrix(const FullMatrix<double> &M, string filename );
-        // Write matrix to data file
-        void write_matrix(const TrilinosWrappers::SparseMatrix &M, string filename );
-        // Write vector to data file
-        void write_vector(const TrilinosWrappers::BlockVector &V, string filename );
-        // Setup degree of freedom (DOF) of the system.
-        void setup_dofs ();
-        // Assemble the system
-        void assemble_system ();
-        // Setup Algebraic multigrid(AMG)
-        void setup_AMG ();
-        // Solve the system
-        void solve ();
-        // Computer the error
-        void compute_errors () const;
-        void output_results ();
-        void output_surface ();
-        
-        const unsigned int						degree;
-        const unsigned int						n_blocks;
-        Triangulation<dim>						triangulation;
-        
-        FESystem<dim>							fe;
-        DoFHandler<dim>							dof_handler;
-        
-        ConstraintMatrix                        constraints;
-        
-        BlockSparsityPattern					sparsity_pattern;
-        TrilinosWrappers::BlockSparseMatrix		system_matrix;
-        TrilinosWrappers::BlockSparseMatrix		system_preconditioner; 		// preconditioner [A 0;Bt S]
-        
-        TrilinosWrappers::BlockVector			solution;
-        TrilinosWrappers::BlockVector			system_rhs, load, body_force, precond_rhs;
-        
-        std_cxx1x::shared_ptr<typename Preconditioner::inner> A0_preconditioner;
-        std_cxx1x::shared_ptr<typename Preconditioner::inner> A1_preconditioner;
-        std_cxx1x::shared_ptr<typename Preconditioner::schur> S_preconditioner;
-    };
+    void run ();
+
+private:
+    // pointer to parameter object
+    parameters *par;
+    // conditional outputs
+    ConditionalOStream info_0, info_1, info_2;
+    // timer
+    TimerOutput computing_timer;
+    // Change string to uppercase
+    std::string to_upper(const std::string str);
+
+    // Create matlab code
+    void generate_matlab_study();
+    // Write matrix to data file
+    void write_matrix(const FullMatrix<double> &M, string filename );
+    // Write matrix to data file
+    void write_matrix(const TrilinosWrappers::SparseMatrix &M, string filename );
+    // Write vector to data file
+    void write_vector(const TrilinosWrappers::BlockVector &V, string filename );
+    // Setup degree of freedom (DOF) of the system.
+    void setup_dofs ();
+    // Assemble the system
+    void assemble_system ();
+    // Setup Algebraic multigrid(AMG)
+    void setup_AMG ();
+    // Solve the system
+    void solve ();
+    // Computer the error
+    void compute_errors () const;
+    void output_results ();
+    void output_surface ();
+
+    const unsigned int						degree;
+    const unsigned int						n_blocks;
+    Triangulation<dim>						triangulation;
+
+    FESystem<dim>							fe;
+    DoFHandler<dim>							dof_handler;
+
+    ConstraintMatrix                        constraints;
+
+    BlockSparsityPattern					sparsity_pattern;
+    TrilinosWrappers::BlockSparseMatrix		system_matrix;
+    TrilinosWrappers::BlockSparseMatrix		system_preconditioner; 		// preconditioner [A 0;Bt S]
+
+    TrilinosWrappers::BlockVector			solution;
+    TrilinosWrappers::BlockVector			system_rhs, load, body_force, precond_rhs;
+
+    std_cxx1x::shared_ptr<typename Preconditioner::inner> A0_preconditioner;
+    std_cxx1x::shared_ptr<typename Preconditioner::inner> A1_preconditioner;
+    std_cxx1x::shared_ptr<typename Preconditioner::schur> S_preconditioner;
+};
 }
 
 /*
@@ -135,19 +135,19 @@ namespace Elastic
  */
 template <int dim>
 Elastic::ElasticProblem<dim>::ElasticProblem (const unsigned int degree, const int _info)
-:
+    :
       info_0(std::cout, _info == 0),
       info_1(std::cout, _info == 1),
       info_2(std::cout, _info == 2),
-computing_timer (info_0,
-                 TimerOutput::summary,
-                 TimerOutput::wall_times),
-degree (degree),
-n_blocks(dim+1),
-triangulation (Triangulation<dim>::maximum_smoothing),
-fe (FE_Q<dim>(degree+1), dim,
-    FE_Q<dim>(degree), 1),
-dof_handler (triangulation)
+      computing_timer (info_0,
+                       TimerOutput::summary,
+                       TimerOutput::wall_times),
+      degree (degree),
+      n_blocks(dim+1),
+      triangulation (Triangulation<dim>::maximum_smoothing),
+      fe (FE_Q<dim>(degree+1), dim,
+          FE_Q<dim>(degree), 1),
+      dof_handler (triangulation)
 {
     par = parameters::getInstance();
 }
@@ -157,7 +157,9 @@ void
 Elastic::ElasticProblem<dim>::setup_dofs (){
 
     // Printing application variable
-    par->print_variables();
+    ostringstream var_str;
+    par->print_variables(var_str);
+    info_0 << var_str.str();
     
     // Number of initial subdivisions for each axis
     std::vector<unsigned int> subdivisions (dim, 1);
@@ -165,12 +167,12 @@ Elastic::ElasticProblem<dim>::setup_dofs (){
     subdivisions[1] = par->ydivisions;
     
     const Point<dim> bottom_left = (dim == 2 ?
-                                    Point<dim>(par->x1,par->y1) :
-                                    Point<dim>(par->x1,0,par->y1));
+                                        Point<dim>(par->x1,par->y1) :
+                                        Point<dim>(par->x1,0,par->y1));
     
     const Point<dim> top_right   = (dim == 2 ?
-                                    Point<dim>(par->x2,par->y2) :
-                                    Point<dim>(par->x2,1,par->y2));
+                                        Point<dim>(par->x2,par->y2) :
+                                        Point<dim>(par->x2,1,par->y2));
     
     // Creating the grid
     GridGenerator::subdivided_hyper_rectangle (triangulation,
@@ -249,13 +251,13 @@ Elastic::ElasticProblem<dim>::setup_dofs (){
         
         constraints.clear();
         VectorTools::interpolate_boundary_values (dof_handler,
-                                                  NO_SLIP,
+                                                  bFlags::NO_SLIP,
                                                   ZeroFunction<dim>(3),
                                                   constraints,
                                                   ns_mask);
         
         VectorTools::interpolate_boundary_values (dof_handler,
-                                                  V_SLIP,
+                                                  bFlags::V_SLIP,
                                                   ZeroFunction<dim>(3),
                                                   constraints,
                                                   vs_mask);
@@ -275,10 +277,10 @@ Elastic::ElasticProblem<dim>::setup_dofs (){
     DoFTools::count_dofs_per_block (dof_handler, dofs_per_block, block_component);
     
     info_0 << "   Number of active cells: "
-    << triangulation.n_active_cells()
-    << ", Number of degrees of freedom: "
-    << dof_handler.n_dofs()
-    << " (" << dofs_per_block[0];
+           << triangulation.n_active_cells()
+           << ", Number of degrees of freedom: "
+           << dof_handler.n_dofs()
+           << " (" << dofs_per_block[0];
     for(int i=1; i<n_blocks;++i)
         info_0 << " + " << dofs_per_block[i];
     info_0 << ")" << std::endl;
@@ -398,20 +400,20 @@ Elastic::ElasticProblem<dim>::assemble_system ()
         l_p[i] = order[i+dim_u];
     
     FullMatrix<double>	cell_matrix  (dofs_per_cell, dofs_per_cell),
-    cell_ordered (dofs_per_cell, dofs_per_cell),
-    cell_precond (dofs_per_cell, dofs_per_cell),
-    l_A          (dim_u,dim_u),
-    l_Bt         (dim_u,dim_p),
-    l_B          (dim_p,dim_u),
-    l_C          (dim_p,dim_p),
-    l_S          (dim_p,dim_p),
-    l_Ainv       (dim_u,dim_u),
-    l_Adiag      (dim_u,dim_u), // laplacian
-    aux          (dim_u,dim_u);
+            cell_ordered (dofs_per_cell, dofs_per_cell),
+            cell_precond (dofs_per_cell, dofs_per_cell),
+            l_A          (dim_u,dim_u),
+            l_Bt         (dim_u,dim_p),
+            l_B          (dim_p,dim_u),
+            l_C          (dim_p,dim_p),
+            l_S          (dim_p,dim_p),
+            l_Ainv       (dim_u,dim_u),
+            l_Adiag      (dim_u,dim_u), // laplacian
+            aux          (dim_u,dim_u);
     
     // Dummy cell matrix for preconditioner, it is allways zero
     Vector<double>      cell_rhs (dofs_per_cell),
-    cell_pre_rhs(dofs_per_cell);
+            cell_pre_rhs(dofs_per_cell);
     
     std::vector<unsigned int> local_dof_indices (dofs_per_cell);
     
@@ -442,8 +444,8 @@ Elastic::ElasticProblem<dim>::assemble_system ()
     double h;
     
     typename DoFHandler<dim>::active_cell_iterator
-    cell = dof_handler.begin_active(),
-    endc = dof_handler.end();
+            cell = dof_handler.begin_active(),
+            endc = dof_handler.end();
     for (; cell!=endc; ++cell)
     {
         fe_values.reinit (cell);
@@ -473,12 +475,12 @@ Elastic::ElasticProblem<dim>::assemble_system ()
             for (unsigned int i=0; i<dofs_per_cell; ++i)
             {
                 const unsigned int component_i =
-                fe.system_to_component_index(i).first;
+                        fe.system_to_component_index(i).first;
                 
                 for (unsigned int j=0; j < dofs_per_cell; ++j)
                 {
                     const unsigned int component_j =
-                    fe.system_to_component_index(j).first;
+                            fe.system_to_component_index(j).first;
                     
                     cell_matrix(i,j) += (symgrad_phi_u[i] * symgrad_phi_u[j] * 2 * mu_values[q] // A
                                          - grad_phi[j]  * e * phi_u[i] * par->scale3 * par->adv_enabled	// A-adv
@@ -486,12 +488,12 @@ Elastic::ElasticProblem<dim>::assemble_system ()
                                          + div_phi_u[i] * phi_p[j] * mu_values[q]				// Bt
                                          + phi_p[i] * div_phi_u[j] * mu_values[q]				// B
                                          - phi_p[i] * phi_p[j] * beta_values[q] )				// C
-                    * fe_values.JxW(q);
+                            * fe_values.JxW(q);
                     
                     cell_precond(i,j) += (
-                                          phi_p[i] * div_phi_u[j] * mu_values[q]				// B
-                                          )*
-                    fe_values.JxW(q);
+                                phi_p[i] * div_phi_u[j] * mu_values[q]				// B
+                                )*
+                            fe_values.JxW(q);
                     
                 }// end j
                 
@@ -502,7 +504,7 @@ Elastic::ElasticProblem<dim>::assemble_system ()
         // Neumann Boundary conditions (Ice-Load and free surface)
         for (unsigned int face_num=0; face_num<GeometryInfo<dim>::faces_per_cell; ++face_num){
             if (cell->face(face_num)->at_boundary()
-                && (cell->face(face_num)->boundary_indicator() == par->b_ice ) ){
+                    && (cell->face(face_num)->boundary_indicator() == par->b_ice ) ){
                 // Update face values
                 fe_face_values.reinit (cell, face_num);
                 
@@ -513,11 +515,11 @@ Elastic::ElasticProblem<dim>::assemble_system ()
                 for (unsigned int q=0; q<n_face_q_points; ++q)
                     for (unsigned int i=0; i<dofs_per_cell; ++i){
                         const unsigned int
-                        component_i = fe.system_to_component_index(i).first;
+                                component_i = fe.system_to_component_index(i).first;
                         
                         cell_rhs(i) +=  fe_face_values.shape_value(i, q) *
-                        boundary_values[q](component_i) *
-                        fe_face_values.JxW(q);
+                                boundary_values[q](component_i) *
+                                fe_face_values.JxW(q);
                     }
             }// end if at boundary
         }// end face
@@ -621,13 +623,13 @@ void
 Elastic::ElasticProblem<dim>::setup_AMG ()
 {
     A0_preconditioner
-    = std_cxx1x::shared_ptr<typename Preconditioner::inner>(new typename Preconditioner::inner());
+            = std_cxx1x::shared_ptr<typename Preconditioner::inner>(new typename Preconditioner::inner());
     
     A1_preconditioner
-    = std_cxx1x::shared_ptr<typename Preconditioner::inner>(new typename Preconditioner::inner());
+            = std_cxx1x::shared_ptr<typename Preconditioner::inner>(new typename Preconditioner::inner());
     
     S_preconditioner
-    = std_cxx1x::shared_ptr<typename Preconditioner::schur>(new typename Preconditioner::schur());
+            = std_cxx1x::shared_ptr<typename Preconditioner::schur>(new typename Preconditioner::schur());
     
     std::vector<std::vector<bool> > constant_modes;
     std::vector<bool>  displacement_components (dim+1,false);
@@ -685,16 +687,16 @@ Elastic::ElasticProblem<dim>::solve ()
 {
     
     const BlockSchurPreconditioner<typename Preconditioner::inner, // A0, schur
-    typename Preconditioner::inner, // A1, schur
-    typename Preconditioner::schur>
+            typename Preconditioner::inner, // A1, schur
+            typename Preconditioner::schur>
             preconditioner( system_preconditioner, *A0_preconditioner, *A1_preconditioner, *S_preconditioner); // system_matrix
     
     SolverControl solver_control (system_matrix.m(),
                                   par->TOL*system_rhs.l2_norm());
     
     SolverGMRES<TrilinosWrappers::BlockVector>
-    solver (solver_control,
-            SolverGMRES<TrilinosWrappers::BlockVector >::AdditionalData(100));
+            solver (solver_control,
+                    SolverGMRES<TrilinosWrappers::BlockVector >::AdditionalData(100));
     
     solver.solve(system_matrix, solution, system_rhs, preconditioner);
     
@@ -708,9 +710,9 @@ void
 Elastic::ElasticProblem<dim>::compute_errors () const
 {
     const ComponentSelectFunction<dim>
-    pressure_mask (dim, dim+1);
+            pressure_mask (dim, dim+1);
     const ComponentSelectFunction<dim>
-    velocity_mask(std::make_pair(0, dim), dim+1);
+            velocity_mask(std::make_pair(0, dim), dim+1);
     
     ExactSolution<dim> exact_solution;
     Vector<double> cellwise_errors (triangulation.n_active_cells());
@@ -736,8 +738,8 @@ Elastic::ElasticProblem<dim>::compute_errors () const
     
     
     info_0 << "Errors: ||e_u||_L2, ||e_p||_L2 = " << u_l2_error
-    << "," << p_l2_error
-    << std::endl;
+           << "," << p_l2_error
+           << std::endl;
     info_1 << u_l2_error << "\t" << p_l2_error <<"\t";
     info_2 << u_l2_error << "\t" << p_l2_error <<"\t";
 }
@@ -781,51 +783,49 @@ Elastic::ElasticProblem<dim>::run ()
     }
     
     int inv_iter = 0, schur_iter = 0;
-    if(par->solve){
-        
-        info_0 << "   system solver ... ";
-        computing_timer.enter_section("System solver");
-        solve ();
-        computing_timer.exit_section("System solver");
-        info_0 << " DONE" << std::endl;
-        
-        // printing solver info
-        for(unsigned int i = 0; i < par->inv_iterations.size(); i++){
-            inv_iter   += par->inv_iterations[i];
-            schur_iter += par->schur_iterations[i];
-        }
-        
-        // average inner iterations
-        inv_iter = (int)(1.0*inv_iter/par->inv_iterations.size());
-        schur_iter = (int)(1.0*schur_iter/par->schur_iterations.size());
-        
-        output_results ();
-        output_surface();
-        
-        if(par->x2 == par->Ix )
-            compute_errors ();
 
-        int tempSpace = 15;
-        info_0   << "GMRES iterations: system(<inv>,<schur>) = "
-        << par->system_iter
-        << "(" << inv_iter << ", " << schur_iter << ")"
-        << endl;
-        
-        info_1   << left << setw(tempSpace) << setfill(' ') << par->system_iter
-        << left << setw(tempSpace) << setfill(' ') << schur_iter
-        << left << setw(tempSpace) << setfill(' ') << t_ass
-        << left << setw(tempSpace) << setfill(' ') << t_solve
-        << left << setw(tempSpace) << setfill(' ') << par->dofs.str()
-        << endl;
-        
-        info_2   << left << setw(tempSpace) << setfill(' ') << par->system_iter
-        << left << setw(tempSpace) << setfill(' ') << inv_iter
-        << left << setw(tempSpace) << setfill(' ') << schur_iter
-        << left << setw(tempSpace) << setfill(' ') << t_ass
-        << left << setw(tempSpace) << setfill(' ') << t_solve
-        << left << setw(tempSpace) << setfill(' ') << par->dofs.str()
-        << endl;
+    info_0 << "   system solver ... ";
+    computing_timer.enter_section("System solver");
+    solve ();
+    computing_timer.exit_section("System solver");
+    info_0 << " DONE" << std::endl;
+
+    // printing solver info
+    for(unsigned int i = 0; i < par->inv_iterations.size(); i++){
+        inv_iter   += par->inv_iterations[i];
+        schur_iter += par->schur_iterations[i];
     }
+
+    // average inner iterations
+    inv_iter = (int)(1.0*inv_iter/par->inv_iterations.size());
+    schur_iter = (int)(1.0*schur_iter/par->schur_iterations.size());
+
+    output_results ();
+    output_surface();
+
+    if(par->x2 == par->Ix )
+        compute_errors ();
+
+    int tempSpace = 15;
+    info_0   << "GMRES iterations: system(<inv>,<schur>) = "
+             << par->system_iter
+             << "(" << inv_iter << ", " << schur_iter << ")"
+             << endl;
+
+    info_1   << left << setw(tempSpace) << setfill(' ') << par->system_iter
+             << left << setw(tempSpace) << setfill(' ') << schur_iter
+             << left << setw(tempSpace) << setfill(' ') << t_ass
+             << left << setw(tempSpace) << setfill(' ') << t_solve
+             << left << setw(tempSpace) << setfill(' ') << par->dofs.str()
+             << endl;
+
+    info_2   << left << setw(tempSpace) << setfill(' ') << par->system_iter
+             << left << setw(tempSpace) << setfill(' ') << inv_iter
+             << left << setw(tempSpace) << setfill(' ') << schur_iter
+             << left << setw(tempSpace) << setfill(' ') << t_ass
+             << left << setw(tempSpace) << setfill(' ') << t_solve
+             << left << setw(tempSpace) << setfill(' ') << par->dofs.str()
+             << endl;
 }
 
 template <int dim>
@@ -840,7 +840,7 @@ Elastic::ElasticProblem<dim>::output_results ()
             data_component_interpretation(dim,
                                           DataComponentInterpretation::component_is_part_of_vector);
     data_component_interpretation
-    .push_back (DataComponentInterpretation::component_is_scalar);
+            .push_back (DataComponentInterpretation::component_is_scalar);
 
     DataOut<dim> data_out;
     data_out.attach_dof_handler (dof_handler);
@@ -862,29 +862,29 @@ Elastic::ElasticProblem<dim>::output_results ()
 template <int dim>
 void
 Elastic::ElasticProblem<dim>::output_surface() {
-        using namespace std;
-        vector<string> solution_names (dim, "displacements");
-        solution_names.push_back ("pressure");
+    using namespace std;
+    vector<string> solution_names (dim, "displacements");
+    solution_names.push_back ("pressure");
 
-        vector<DataComponentInterpretation::DataComponentInterpretation>
-                data_component_interpretation(dim,
-                                              DataComponentInterpretation::component_is_part_of_vector);
-        data_component_interpretation
-                .push_back (DataComponentInterpretation::component_is_scalar);
+    vector<DataComponentInterpretation::DataComponentInterpretation>
+            data_component_interpretation(dim,
+                                          DataComponentInterpretation::component_is_part_of_vector);
+    data_component_interpretation
+            .push_back (DataComponentInterpretation::component_is_scalar);
 
-        SurfaceDataOut<dim> data_out;
-        data_out.attach_dof_handler (dof_handler);
-        data_out.add_data_vector (solution, solution_names,
-                                  DataOutFaces<dim>::type_dof_data,
-                                  data_component_interpretation);
-        data_out.build_patches ();
+    SurfaceDataOut<dim> data_out;
+    data_out.attach_dof_handler (dof_handler);
+    data_out.add_data_vector (solution, solution_names,
+                              DataOutFaces<dim>::type_dof_data,
+                              data_component_interpretation);
+    data_out.build_patches ();
     
-        ostringstream filename;
-        filename << "surface_" << par->str_poisson	<< ".gnuplot";
+    ostringstream filename;
+    filename << "surface_" << par->str_poisson	<< ".gnuplot";
 
-        ofstream output (filename.str().c_str());
-        data_out.write_gnuplot (output);
-        info_0 << "   Extracting surface values ..." << endl;
+    ofstream output (filename.str().c_str());
+    data_out.write_gnuplot (output);
+    info_0 << "   Extracting surface values ..." << endl;
 }
 
 // Change string to uppercase
