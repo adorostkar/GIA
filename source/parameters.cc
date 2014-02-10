@@ -38,7 +38,7 @@ parameters::parameters(int argc, char* argv[]):
     // Other setups.
     default_file = "default.config";
     if(!fexists(default_file)){
-        std::cerr << "Default file must always be available!\n";
+        std::cerr << "Default file must always be available!\nSample file is created.\n";
         write_sample_file();
         exit(1);
     }

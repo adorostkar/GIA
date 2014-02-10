@@ -156,10 +156,12 @@ template <int dim>
 void
 Elastic::ElasticProblem<dim>::setup_dofs (){
 
-    // Printing application variable
-    ostringstream var_str;
-    par->print_variables(var_str);
-    info_0 << var_str.str();
+    {
+        // Printing application variable
+        ostringstream var_str;
+        par->print_variables(var_str);
+        info_0 << var_str.str();
+    }
     
     // Number of initial subdivisions for each axis
     std::vector<unsigned int> subdivisions (dim, 1);
@@ -307,7 +309,7 @@ Elastic::ElasticProblem<dim>::setup_dofs (){
     
     // Print sparsity pattern of the matrix
     if(par->print_matrices){
-        std::ofstream out ("sparsity_pattern.1");
+        std::ofstream out ("sparsity_pattern.gnuplot");
         sparsity_pattern.print_gnuplot (out);
         out.close();
     }
@@ -372,7 +374,7 @@ Elastic::ElasticProblem<dim>::assemble_system ()
     int *local_dim_start = new int[n_blocks];
     
     unsigned int dim_u = 0,		// dim * Q2 nodes
-            dim_p = 0;// 1 * Q1 nodes
+                 dim_p = 0;// 1 * Q1 nodes
     
     // for components
     for(int i = 0; i< n_blocks-1; i++){
@@ -482,18 +484,18 @@ Elastic::ElasticProblem<dim>::assemble_system ()
                     const unsigned int component_j =
                             fe.system_to_component_index(j).first;
                     
-                    cell_matrix(i,j) += (symgrad_phi_u[i] * symgrad_phi_u[j] * 2 * mu_values[q] // A
+                    cell_matrix(i,j) += (
+                                         symgrad_phi_u[i] * symgrad_phi_u[j] * 2 * mu_values[q]         // A
                                          - grad_phi[j]  * e * phi_u[i] * par->scale3 * par->adv_enabled	// A-adv
                                          + div_phi_u[j] * e * phi_u[i] * par->scale3 * par->div_enabled	// A-div
-                                         + div_phi_u[i] * phi_p[j] * mu_values[q]				// Bt
-                                         + phi_p[i] * div_phi_u[j] * mu_values[q]				// B
-                                         - phi_p[i] * phi_p[j] * beta_values[q] )				// C
-                            * fe_values.JxW(q);
+                                         + div_phi_u[i] * phi_p[j] * mu_values[q]                       // Bt
+                                         + phi_p[i] * div_phi_u[j] * mu_values[q]                       // B
+                                         - phi_p[i] * phi_p[j] * beta_values[q]                         // C
+                                        )* fe_values.JxW(q);
                     
                     cell_precond(i,j) += (
-                                phi_p[i] * div_phi_u[j] * mu_values[q]				// B
-                                )*
-                            fe_values.JxW(q);
+                                          phi_p[i] * div_phi_u[j] * mu_values[q]				// B
+                                         )* fe_values.JxW(q);
                     
                 }// end j
                 
@@ -518,8 +520,8 @@ Elastic::ElasticProblem<dim>::assemble_system ()
                                 component_i = fe.system_to_component_index(i).first;
                         
                         cell_rhs(i) +=  fe_face_values.shape_value(i, q) *
-                                boundary_values[q](component_i) *
-                                fe_face_values.JxW(q);
+                                        boundary_values[q](component_i) *
+                                        fe_face_values.JxW(q);
                     }
             }// end if at boundary
         }// end face
@@ -610,6 +612,7 @@ Elastic::ElasticProblem<dim>::assemble_system ()
         first = false;
         counter++;
     } // end cell
+
     free(l_u);
     free(l_p);
     free(order);

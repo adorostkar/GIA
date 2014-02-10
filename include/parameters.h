@@ -15,8 +15,11 @@
 #ifndef PARAMETERS_H_
 #define PARAMETERS_H_
 
-// Boundary types enumerator,
-// Different available boundaries.
+/*! Boundary types enumerator,
+ * Different available boundaries.
+ * Used power of two to be able to
+ * use multiple flags.
+ */
 struct bFlags{
     enum boundary_Type {
         NEUMANN = 1<<0,
@@ -30,22 +33,21 @@ struct bFlags{
 class parameters {
 public:
     // Variables
-    std::string					param_file,
-    default_file;
+    std::string					param_file, default_file;
 
     int							dimension, degree,
-    refinements,
-    xdivisions, ydivisions,
-    info, // {0,1,2}
-    system_iter;
+                                refinements,
+                                xdivisions, ydivisions,
+                                info, // {0,1,2}
+                                system_iter;
 
     double						load, weight,
-    gravity,
-    InvMatPreTOL, SchurTOL, TOL, threshold,
-    YOUNG, POISSON, ETA,
-    rho_i, rho_r, g0,
-    x1, x2, y1, y2, Ix, h,
-    L, U, S, T;
+                                gravity,
+                                InvMatPreTOL, SchurTOL, TOL, threshold,
+                                YOUNG, POISSON, ETA,
+                                rho_i, rho_r, g0,
+                                x1, x2, y1, y2, Ix, h,
+                                L, U, S, T;
 
     /*!
      * \brief scale1 = L^2/(SU)
