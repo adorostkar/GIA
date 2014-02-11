@@ -38,13 +38,13 @@ namespace Elastic
      ************** PRECONDITIONER **************
      */
 	// new code step-31
-    template <class PreconditionerA0, class PreconditionerA1, class PreconditionerS>
+    template <class PreconditionerA, class PreconditionerS>
 	class BlockSchurPreconditioner : public Subscriptor
     {
     public:
         BlockSchurPreconditioner (const TrilinosWrappers::BlockSparseMatrix     &S,
-                                  const PreconditionerA0           &A0preconditioner,
-                                  const PreconditionerA1           &A1preconditioner,
+                                  const PreconditionerA            &A0preconditioner,
+                                  const PreconditionerA            &A1preconditioner,
                                   const PreconditionerS            &Spreconditioner);
         
         void vmult (TrilinosWrappers::BlockVector       &dst,
@@ -54,8 +54,8 @@ namespace Elastic
     	// pointer to parameter object
     	parameters *par;
         const SmartPointer<const TrilinosWrappers::BlockSparseMatrix> s_matrix;
-        const PreconditionerA0 &a0_preconditioner;
-        const PreconditionerA1 &a1_preconditioner;
+        const PreconditionerA  &a0_preconditioner;
+        const PreconditionerA  &a1_preconditioner;
         const PreconditionerS  &s_preconditioner;
         
         mutable TrilinosWrappers::Vector tmp;
@@ -65,11 +65,11 @@ namespace Elastic
 /*
      ------------- IMPLEMENTATION --------------
 */
-template <class PreconditionerA0, class PreconditionerA1, class PreconditionerS>
-Elastic::BlockSchurPreconditioner<PreconditionerA0, PreconditionerA1, PreconditionerS>::
+template <class PreconditionerA, class PreconditionerS>
+Elastic::BlockSchurPreconditioner<PreconditionerA, PreconditionerS>::
 BlockSchurPreconditioner(const TrilinosWrappers::BlockSparseMatrix  &S,
-                         const PreconditionerA0                      &A0preconditioner,
-                         const PreconditionerA1                      &A1preconditioner,
+                         const PreconditionerA                       &A0preconditioner,
+                         const PreconditionerA                       &A1preconditioner,
                          const PreconditionerS                       &Spreconditioner)
     :
       s_matrix				(&S),
@@ -81,9 +81,9 @@ BlockSchurPreconditioner(const TrilinosWrappers::BlockSparseMatrix  &S,
     par = parameters::getInstance();
 }
 
-template <class PreconditionerA0, class PreconditionerA1, class PreconditionerS>
+template <class PreconditionerA, class PreconditionerS>
 void
-Elastic::BlockSchurPreconditioner<PreconditionerA0, PreconditionerA1, PreconditionerS>::
+Elastic::BlockSchurPreconditioner<PreconditionerA, PreconditionerS>::
 vmult (TrilinosWrappers::BlockVector       &dst,
        const TrilinosWrappers::BlockVector &src) const
 {

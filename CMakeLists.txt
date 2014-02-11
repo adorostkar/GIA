@@ -18,7 +18,7 @@ FILE(GLOB headers ./include/*.h)
 FILE(GLOB sources ./source/*.cc)
 ADD_EXECUTABLE(elastic ${sources} ${headers})
 
-ADD_CUSTOM_TARGET(clean
+ADD_CUSTOM_TARGET(clear
   COMMAND rm ${CLEAN_UP_FILES}
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
   )

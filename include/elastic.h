@@ -295,12 +295,11 @@ Elastic::ElasticProblem<dim>::setup_dofs (){
     // Create sparsity pattern
     {
         BlockCompressedSimpleSparsityPattern bcsp(n_blocks, n_blocks);
-        for(int i=0; i<n_blocks; ++i){
-            for(int j=0; j<n_blocks; ++j){
+        for(int i=0; i<n_blocks; ++i)
+            for(int j=0; j<n_blocks; ++j)
                 bcsp.block(i,j).reinit (dofs_per_block[i],
                                         dofs_per_block[j]);
-            }
-        }
+
         bcsp.collect_sizes();
         DoFTools::make_sparsity_pattern (dof_handler, bcsp, constraints, true);
         
@@ -690,8 +689,7 @@ Elastic::ElasticProblem<dim>::solve ()
 {
     
     const BlockSchurPreconditioner<typename Preconditioner::inner, // A0, schur
-            typename Preconditioner::inner, // A1, schur
-            typename Preconditioner::schur>
+                                    typename Preconditioner::schur>
             preconditioner( system_preconditioner, *A0_preconditioner, *A1_preconditioner, *S_preconditioner); // system_matrix
     
     SolverControl solver_control (system_matrix.m(),
@@ -771,7 +769,6 @@ Elastic::ElasticProblem<dim>::run ()
     
     if(par->print_matrices ){ // define print_data
         std::cout << "   ** Printing matrices in Matlab form **" << std::endl << std::flush;
-        int n_blocks = dim+1;
         for(int i=0; i<n_blocks; ++i){
             for(int j=0; j<n_blocks; ++j){
                 string a = "a" + std::to_string(i) + std::to_string(j);
@@ -920,9 +917,6 @@ Elastic::ElasticProblem<dim>::generate_matlab_study(){
         return;
     }
 
-    myfile << "close all;clear;" << endl;
-
-    int n_blocks = dim+1;
     myfile << "%loading data" << std::endl;
     for(int i=0; i<n_blocks; ++i){
         for(int j=0; j<n_blocks; ++j){
