@@ -698,20 +698,8 @@ Elastic::ElasticBase<dim>::run ()
     computing_timer.exit_section("AMG preconditioners");
     info_0 << " DONE" << std::endl;
 
-    if(par->print_matrices ){ // define print_data
-        std::cout << "   ** Printing matrices in Matlab form **" << std::endl << std::flush;
-        for(int i=0; i<n_blocks; ++i){
-            for(int j=0; j<n_blocks; ++j){
-                string a = "a" + std::to_string(i) + std::to_string(j);
-                string p = "p" + std::to_string(i) + std::to_string(j);
-                write_matrix(system_matrix.block(i,j),a);
-                write_matrix(system_preconditioner.block(i,j),p);
-            }
-        }
-        write_vector(system_rhs,"rhs");
-        // printing: matrices, par->info
+    if(par->print_matrices ) // define print_data
         generate_matlab_study();
-    }
 
     int inv_iter = 0, schur_iter = 0;
 
@@ -832,7 +820,19 @@ Elastic::ElasticBase<dim>::to_upper(const std::string str){
 template <int dim>
 void
 Elastic::ElasticBase<dim>::generate_matlab_study(){
-    int figure = 1;
+    info_0 << "   ** Printing matrices in Matlab form **" << std::endl << std::flush;
+    for(int i=0; i<n_blocks; ++i){
+        for(int j=0; j<n_blocks; ++j){
+            string a = "a" + std::to_string(i) + std::to_string(j);
+            string p = "p" + std::to_string(i) + std::to_string(j);
+            write_matrix(system_matrix.block(i,j),a);
+            write_matrix(system_preconditioner.block(i,j),p);
+        }
+    }
+    write_vector(system_rhs,"rhs");
+    // printing: matrices, par->info
+
+    /// *******************************
     string extension;
     // Generate Matlab filename
     ostringstream tempOS;
