@@ -26,17 +26,6 @@ using namespace std;
 using namespace dealii;
 namespace Elastic
 {
-    // Preconditioner structure
-    struct Preconditioner
-    {
-        //typedef SparseDirectUMFPACK		inner;
-        //typedef SparseILU<double>		inner; // long time computing preconditioner
-        typedef TrilinosWrappers::PreconditionAMG schur;
-        typedef TrilinosWrappers::PreconditionAMG inner; // set AMG true
-    };
-    /*
-     ************** PRECONDITIONER **************
-     */
 	// new code step-31
     template <class PreconditionerA, class PreconditionerS>
 	class BlockSchurPreconditioner : public Subscriptor

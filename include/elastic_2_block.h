@@ -1,7 +1,3 @@
-/* TODO
-
- */
-
 #include <deal.II/base/convergence_table.h>
 #include <deal.II/base/function.h>
 #include <deal.II/base/logstream.h>
@@ -48,16 +44,11 @@
 #include <typeinfo>
 
 #include "elastic_base.h"
-#include "boundary.h"
-#include "coefficient.h"
-#include "exact.h"
 #include "parameters.h"
-#include "preconditioner.h"
-#include "rhs.h"
-#include "SurfaceDataOut.h"
+#include "preconditioner_2block.h"
 
-#ifndef ELASTIC_H
-#define ELASTIC_H
+#ifndef ELASTIC_2_BLOCK_H
+#define ELASTIC_2_BLOCK_H
 
 #define ZERO 1.0e-8
 
@@ -66,9 +57,9 @@ using namespace dealii;
 namespace Elastic
 {
 template <int dim>
-class ElasticProblem : public ElasticBase<dim> {
+class Elastic2Blocks : public ElasticBase<dim> {
 public:
-    ElasticProblem (const unsigned int degree, const int _info);
+    Elastic2Blocks (const unsigned int degree, const int _info);
 
 private:
     // Setup Algebraic multigrid(AMG)
@@ -76,8 +67,7 @@ private:
     // Solve the system
     virtual void solve ();
 
-    std_cxx1x::shared_ptr<typename Preconditioner::inner> A0_preconditioner;
-    std_cxx1x::shared_ptr<typename Preconditioner::inner> A1_preconditioner;
+    std_cxx1x::shared_ptr<typename Preconditioner::inner> A_preconditioner;
     std_cxx1x::shared_ptr<typename Preconditioner::schur> S_preconditioner;
 };
 }
@@ -86,104 +76,74 @@ private:
  ------------- IMPLEMENTATION --------------
  */
 template <int dim>
-Elastic::ElasticProblem<dim>::ElasticProblem (const unsigned int degree, const int _info)
-    : Elastic::ElasticBase<dim>(degree, _info, dim+1){}
+Elastic::Elastic2Blocks<dim>::Elastic2Blocks (const unsigned int degree, const int _info)
+    : Elastic::ElasticBase<dim>(degree, _info, 2){}
 
 /**
  * Setup preconditioners
  */
 template <int dim>
 void
-Elastic::ElasticProblem<dim>::setup_AMG ()
+Elastic::Elastic2Blocks<dim>::setup_AMG ()
 {
-    // Reset preconditioners and matrices
-    A0_preconditioner.reset ();
-    A1_preconditioner.reset ();
-    S_preconditioner.reset ();
-
-    A0_preconditioner
+    A_preconditioner
             = std_cxx1x::shared_ptr<typename Preconditioner::inner>(new typename Preconditioner::inner());
 
-    A1_preconditioner
-            = std_cxx1x::shared_ptr<typename Preconditioner::inner>(new typename Preconditioner::inner());
-    
     S_preconditioner
             = std_cxx1x::shared_ptr<typename Preconditioner::schur>(new typename Preconditioner::schur());
 
     std::vector<std::vector<bool> > constant_modes;
-    std::vector<bool>  displacement_components (dim+1,false);
-    
-    // A00
-    displacement_components[0] = true;
+    std::vector<bool>  displacement_components (ElasticBase<dim>::n_components,true);
+
+    // A
+    //    displacement_components[0] = true;
+    displacement_components[ElasticBase<dim>::n_components-1] = false;
     DoFTools::extract_constant_modes (ElasticBase<dim>::dof_handler,
                                       displacement_components,
                                       constant_modes);
-    
-    TrilinosWrappers::PreconditionAMG::AdditionalData amg_A0;
-    amg_A0.constant_modes = constant_modes;
-    
-    amg_A0.elliptic = true;
-    amg_A0.higher_order_elements = false;
-    amg_A0.smoother_sweeps = 2;
-    amg_A0.aggregation_threshold = ElasticBase<dim>::par->threshold;
-    
-    
-    A0_preconditioner->initialize( ElasticBase<dim>::system_preconditioner.block(0,0),amg_A0);
+
+    TrilinosWrappers::PreconditionAMG::AdditionalData amg_A;
+
+    amg_A.constant_modes = constant_modes;
+    amg_A.elliptic = true;
+    amg_A.higher_order_elements = false;
+    amg_A.smoother_sweeps = 2;
+    amg_A.aggregation_threshold = ElasticBase<dim>::par->threshold;
+
+
+    A_preconditioner->initialize( ElasticBase<dim>::system_preconditioner.block(0,0),amg_A);
     //
-    
-    //A11
-    displacement_components[0] = false;
-    displacement_components[1] = true;
-    DoFTools::extract_constant_modes (ElasticBase<dim>::dof_handler,
-                                      displacement_components,
-                                      constant_modes);
-    
-    TrilinosWrappers::PreconditionAMG::AdditionalData amg_A1;
-    amg_A1.constant_modes = constant_modes;
-    
-    amg_A1.elliptic = true;
-    amg_A1.higher_order_elements = false;
-    amg_A1.smoother_sweeps = 2;
-    amg_A1.aggregation_threshold = ElasticBase<dim>::par->threshold;
-    
-    A1_preconditioner->initialize( ElasticBase<dim>::system_preconditioner.block(1,1),amg_A1);
-    //
-    
     TrilinosWrappers::PreconditionAMG::AdditionalData amg_S;
-    
+
     amg_S.elliptic = true;
     amg_S.higher_order_elements = false;
     amg_S.smoother_sweeps = 2;
     amg_S.aggregation_threshold = ElasticBase<dim>::par->threshold;
-    
+
     // elem-by-elem Schur
-    S_preconditioner->initialize( ElasticBase<dim>::system_preconditioner.block(2,2), amg_S);
+    S_preconditioner->initialize( ElasticBase<dim>::system_preconditioner.block(1,1), amg_S);
 }
 
 template <int dim>
 void
-Elastic::ElasticProblem<dim>::solve ()
+Elastic::Elastic2Blocks<dim>::solve ()
 {
-    
-    const BlockSchurPreconditioner<typename Preconditioner::inner, // A0, schur
+    const Preconditioner2Blocks< typename Preconditioner::inner, // A, schur
             typename Preconditioner::schur>
-            preconditioner( ElasticBase<dim>::system_preconditioner, *A0_preconditioner, *A1_preconditioner, *S_preconditioner); // system_matrix
-    
+            preconditioner( ElasticBase<dim>::system_preconditioner, *A_preconditioner, *S_preconditioner); // system_matrix
+
     SolverControl solver_control (ElasticBase<dim>::system_matrix.m(),
                                   ElasticBase<dim>::par->TOL*ElasticBase<dim>::system_rhs.l2_norm());
-    
+
     SolverGMRES<TrilinosWrappers::BlockVector>
             solver (solver_control,
                     SolverGMRES<TrilinosWrappers::BlockVector >::AdditionalData(100));
-    
+
     solver.solve(ElasticBase<dim>::system_matrix, ElasticBase<dim>::solution, ElasticBase<dim>::system_rhs, preconditioner);
-    
+
     ElasticBase<dim>::par->system_iter = solver_control.last_step();
     deallog << "\t\tSchur " << ElasticBase<dim>::par->system_iter << std::endl;
 }
 
-/*
- **************************************
- */
 
-#endif
+#endif // ELASTIC_2_BLOCK_H

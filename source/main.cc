@@ -1,4 +1,5 @@
 #include "elastic.h"
+#include "elastic_2_block.h"
 #include "parameters.h"
 
 int main (int argc, char** argv)
@@ -22,14 +23,25 @@ int main (int argc, char** argv)
 		// Attach deallog to process output
 		deallog.attach(pout);
 		deallog.depth_console (0);
-		
-		if(par->dimension == 2){
-            Elastic::ElasticProblem<2> elastic_problem(par->degree, par->info);
-			elastic_problem.run ();
-        }else if(par->dimension == 3){
-            Elastic::ElasticProblem<3> elastic_problem(par->degree, par->info);
-            elastic_problem.run ();
-		}else printf("wrong dimension");
+
+
+        if(par->precond){
+            if(par->dimension == 2){
+                Elastic::Elastic2Blocks<2> elastic_problem(par->degree, par->info);
+                elastic_problem.run ();
+            }else{
+                Elastic::Elastic2Blocks<3> elastic_problem(par->degree, par->info);
+                elastic_problem.run ();
+            }
+        }else{
+            if(par->dimension == 2){
+                Elastic::ElasticProblem<2> elastic_problem(par->degree, par->info);
+                elastic_problem.run ();
+            }else{
+                Elastic::ElasticProblem<3> elastic_problem(par->degree, par->info);
+                elastic_problem.run ();
+            }
+        }
         
     }
 	catch (std::exception &exc)
