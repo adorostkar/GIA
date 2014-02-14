@@ -167,7 +167,10 @@ Elastic::ElasticProblem<dim>::solve ()
     
     const BlockSchurPreconditioner<typename Preconditioner::inner, // A0, schur
             typename Preconditioner::schur>
-            preconditioner( ElasticBase<dim>::system_preconditioner, *A0_preconditioner, *A1_preconditioner, *S_preconditioner); // system_matrix
+            preconditioner( ElasticBase<dim>::system_preconditioner,
+                            *A0_preconditioner,
+                            *A1_preconditioner,
+                            *S_preconditioner); // system_matrix
     
     SolverControl solver_control (ElasticBase<dim>::system_matrix.m(),
                                   ElasticBase<dim>::par->TOL*ElasticBase<dim>::system_rhs.l2_norm());

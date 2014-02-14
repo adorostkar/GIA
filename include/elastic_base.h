@@ -429,9 +429,12 @@ Elastic::ElasticBase<dim>::assemble_system ()
     const FEValuesExtractors::Vector displacements (0);
     const FEValuesExtractors::Scalar pressure (dim);
 
+    /*! @todo check if this works correctly for 3d as well.
+     */
     Tensor<1,dim> e(true);
-    e[0] = 0;
-    e[1] = 1.0; // 3rd dim??
+    for(int d =0; d <dim-1;d++)
+        e[d] = 0;
+    e[dim-1] = 1.0;
 
     std::vector<SymmetricTensor<2,dim> > symgrad_phi_u	(dofs_per_cell);
     std::vector<Tensor<2,dim> >          grad_phi		(dofs_per_cell);
@@ -674,7 +677,7 @@ Elastic::ElasticBase<dim>::run ()
     /// Terminal output
     info_0 << "   Number of active cells: "
            << triangulation.n_active_cells()
-           << ", Number of degrees of freedom: "
+           << "\n   Number of degrees of freedom: "
            << dof_handler.n_dofs()
     << " (" << dofs_per_component[0];
     for(int i=1; i<n_components;++i)
