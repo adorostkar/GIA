@@ -227,14 +227,9 @@ void
 Elastic::ElasticBase<dim>::setup_dofs (){
 
     dof_handler.distribute_dofs (fe);
-    /**
-     * TODO:
-     * Can we use this
-     * Fastens the algorithm by a small factor.
-     * In ref 7 excluding this runtime takes 1100 secs
-     * and with this we have 917 secs.
-     */
-    //    DoFRenumbering::Cuthill_McKee (dof_handler);
+
+    // Renumber to reduce sparsity band
+    DoFRenumbering::Cuthill_McKee (dof_handler);
 
     // Renumber component wise
     std::vector<unsigned int> block_component (n_components,0);
@@ -276,8 +271,6 @@ Elastic::ElasticBase<dim>::setup_dofs (){
     system_preconditioner.clear ();
 
     // Count the number of DOFs per block
-//    std::vector<unsigned int> dofs_per_component (n_components);
-//    std::vector<unsigned int> dofs_per_block (n_blocks);
     DoFTools::count_dofs_per_block (dof_handler, dofs_per_component, block_component);
 
     if(n_blocks == 2){
@@ -307,7 +300,7 @@ Elastic::ElasticBase<dim>::setup_dofs (){
 
     // Print sparsity pattern of the matrix
     if(par->print_matrices){
-        std::ofstream out ("sparsity_pattern.1");
+        std::ofstream out ("sparsity_pattern.gnuplot");
         sparsity_pattern.print_gnuplot (out);
         out.close();
     }
@@ -408,8 +401,7 @@ Elastic::ElasticBase<dim>::assemble_system ()
             l_C          (dim_p,dim_p),
             l_S          (dim_p,dim_p),
             l_Ainv       (dim_u,dim_u),
-            l_Adiag      (dim_u,dim_u), // laplacian
-            aux          (dim_u,dim_u);
+            l_Adiag      (dim_u,dim_u); // laplacian
 
     // Dummy cell matrix for preconditioner, it is allways zero
     Vector<double>      cell_rhs (dofs_per_cell),
@@ -537,15 +529,7 @@ Elastic::ElasticBase<dim>::assemble_system ()
 
                 if(i < dim_u && j < dim_u){
                     l_A(i,j)  = cell_ordered(i,j);
-                    aux(i,j)  = l_A(i,j);
-                    for(int k = 0; k < n_components-1; k++){
-                        int dim_sk = local_dim_start[k];
-                        int dim_ek = local_dim_start[k+1];
-                        if(i >= dim_sk && i < dim_ek &&
-                                j >= dim_sk && j < dim_ek){
-                            l_Adiag(i,j) = cell_ordered(i,j); // second block
-                        }
-                    }
+                    l_Ainv(i,j) = l_A(i,j);
                 }else if(i < dim_u && j >= dim_u){
                     l_Bt(i,j-dim_u) = cell_ordered(i,j);
                 }else if(i >= dim_u && j < dim_u){
@@ -560,8 +544,8 @@ Elastic::ElasticBase<dim>::assemble_system ()
 
         // Local Schur calculation	l_A(k,k) += h*h;// A(i,j) + h²I
         h = cell->diameter();
-        aux.diagadd(h*h);
-        l_Ainv.invert(aux);
+        l_Ainv.diagadd(h*h);
+        l_Ainv.gauss_jordan(); // Compute A inverse
 
         l_S.triple_product 	(	l_Ainv,l_B,l_Bt,false,false, -1.0  );
         // End Schur calculation
@@ -578,19 +562,11 @@ Elastic::ElasticBase<dim>::assemble_system ()
         // end Schur assembly preconditioner
 
         // begin assembly A preconditioner
-        if(par->precond == 0){
-            for (unsigned int i=0; i< dim_u; ++i){// shape index i
-                for (unsigned int j=0; j < dim_u; ++j){
-                    cell_precond(l_u[i],l_u[j]) = l_Adiag(i,j);
-                }
-            }
-        }else if(par->precond == 1){
             for (unsigned int i=0; i< dim_u; ++i){// shape index i
                 for (unsigned int j=0; j < dim_u; ++j){
                     cell_precond(l_u[i],l_u[j]) = l_A(i,j);
                 }
             }
-        }
         // end assembly A preconditioner
 
         // printing local matrices
