@@ -16,13 +16,13 @@ int main (int argc, char** argv)
         // get instance of parameters
         par = parameters::getInstance(argc, argv);
 		
-		ostringstream filename;
-		filename << "iterations" << par->str_poisson << ".log";
-		ofstream pout(filename.str().c_str());
+        ostringstream filename;
+        filename << "iterations" << par->str_poisson << ".log";
+        ofstream pout(filename.str().c_str());
 		
-		// Attach deallog to process output
-		deallog.attach(pout);
-		deallog.depth_console (0);
+        // Attach deallog to process output
+        deallog.attach(pout);
+        deallog.depth_console (0);
 
 
         if(par->precond){
@@ -42,7 +42,7 @@ int main (int argc, char** argv)
                 elastic_problem.run ();
             }
         }
-        
+
     }
 	catch (std::exception &exc)
     {

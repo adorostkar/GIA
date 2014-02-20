@@ -33,36 +33,39 @@ parameters* parameters::getInstance(int _argc, char* _argv[]) {
 parameters::parameters(int argc, char* argv[]):
     general("General configurations"),
     vars("Problem variables"),
+    file_options("All file options"),
     cmdLine_options("Allowed options")
 {
-    // Other setups.
-    default_file = "default.config";
+    create_options();
+
+    default_file = "default.cfg";
     if(!fexists(default_file)){
-        std::cerr << "Default file must always be available!\nSample file is created.\n";
+        std::cerr << "default.cfg file must always be available!\nSample file is created.\n";
         write_sample_file();
         exit(1);
     }
 
-    setup_variables_from_file(default_file);
-
-    // Environment options setup
-    set_env_vars();
-
-    po::variables_map vm;
+    // Command line options setup
     po::store(po::parse_command_line(argc, argv, cmdLine_options), vm);
-    po::notify(vm);
 
     if(vm.count("file"))
         param_file = vm["file"].as<std::string>();
 
+    ifstream ifsd;
     if(fexists(param_file)){
-        setup_variables_from_file(param_file);
+        ifsd.open(param_file);
+        po::store(po::parse_config_file(ifsd, file_options), vm);
+        ifsd.close();
     }
 
-    setup_variables_from_cmd(vm);
+    ifsd.open(default_file);
+    po::store(po::parse_config_file(ifsd, file_options), vm);
+    ifsd.close();
 
+    po::notify(vm);
+
+    setup_variables(vm);
     validate_options();
-
     compute_additionals();
 
     inv_iterations   = std::vector<unsigned int>();
@@ -72,27 +75,32 @@ parameters::parameters(int argc, char* argv[]):
 parameters::parameters():
     general("General configurations"),
     vars("Problem variables"),
+    file_options("All file options"),
     cmdLine_options("Allowed options")
 {
+    create_options();
     // Other setups.
-    default_file = "default.config";
+    default_file = "default.cfg";
     if(!fexists(default_file)){
         std::cerr << "Default file must always be available!";
         write_sample_file();
         exit(1);
     }
 
-    setup_variables_from_file(default_file);
+    ifstream ifsd(default_file);
+    po::store(po::parse_config_file(ifsd, file_options), vm);
+    po::notify(vm);
+    ifsd.close();
 
+    setup_variables(vm);
     validate_options();
-
     compute_additionals();
 
     inv_iterations   = std::vector<unsigned int>();
     schur_iterations = std::vector<unsigned int>();
 }
 
-void parameters::set_env_vars() {
+void parameters::create_options() {
     // Environment options setup
     general.add_options()
             ("help,h", "Produce help message")
@@ -102,26 +110,58 @@ void parameters::set_env_vars() {
             ("samplefile", "Write a sample configuration file");
 
     vars.add_options()
-            ("dim", po::value<int>(&dimension), "Problem dimension")
-            ("adv,a", po::value<bool>(&adv_enabled), "Enable/Disable advection term {1|0}")
-            ("div,d", po::value<bool>(&div_enabled), "Enable/Disable divergance term {1|0}")
+            ("dim,d", po::value<int>(), "Problem dimension")
+            ("adv", po::value<bool>(), "Enable/Disable advection term {1|0}")
+            ("div", po::value<bool>(), "Enable/Disable divergance term {1|0}")
             ("elastic,e", "Solve only elastic")
-            ("precondition,c", po::value<bool>(&precond),
+            ("precondition,c", po::value<bool>(),
              "Precondition A using whole/diagBlock of A {1|0}")
-            ("inv_tol,i", po::value<double>(&InvMatPreTOL), "Tolerance for inverse calculation")
+            ("inv_tol,i", po::value<double>(), "Tolerance for inverse calculation")
             ("poisson,p", po::value<double>(&POISSON), "Poisson ratio")
             ("refinement,r", po::value<int>(&refinements), "Number of refinements")
-            ("schur_tol,s", po::value<double>(&SchurTOL), "Tolerance to compute Schur complement")
-            ("system_tol,t", po::value<double>(&TOL), "System solver tollerance")
+            ("schur_tol,s", po::value<double>(), "Tolerance to compute Schur complement")
+            ("system_tol,t", po::value<double>(), "System solver tollerance")
             ("one_schur,o", "One schur iteration")
-            ("weight,w", po::value<bool>(&weight_enabled), "Enable/disable weight computation{1|0}")
             ("young,y", po::value<double>(&YOUNG), "Set Young's modulus")
-            ("threshold,z", po::value<double>(&threshold), "Application threashold");
+            ("threshold,z", po::value<double>(), "Application threashold");
+
+    file_options.add_options()
+            ("dimension",po::value<int>(&dimension), "Set Problem dimension")
+            ("degree",po::value<int>(&degree), "Set degree of polynomial")
+            ("refinement", po::value<int>(&refinements), "Number of refinements")
+            ("young", po::value<double>(&YOUNG), "Set Young's modulus")
+            ("poisson", po::value<double>(&POISSON), "Poisson ratio")
+            ("eta", po::value<double>(&ETA), "ETA value")
+            ("divisions.x", po::value<int>(&xdivisions), "Number of initial divisions in width")
+            ("divisions.y", po::value<int>(&ydivisions), "Number of initial divisions in depth")
+            ("earth.width", po::value<double>(&x2), "Set earth width")
+            ("earth.depth", po::value<double>(&y1), "Set earth depth")
+            ("earth.density", po::value<double>(&rho_r), "Density of earth")
+            ("earth.gravity", po::value<double>(&gravity), "Gravity of earth")
+            ("ice.width", po::value<double>(&Ix), "Set Ice width")
+            ("ice.depth",po::value<double>(&h), "Set Ice depth")
+            ("ice.density", po::value<double>(&rho_i), "Density of ice")
+            ("boundaries.ice", po::value<string>(), "Under ice boundary")
+            ("boundaries.up", po::value<string>(), "Top wall boundary")
+            ("boundaries.right", po::value<string>(), "Right wall boundary")
+            ("boundaries.left", po::value<string>(), "Left wall boundary")
+            ("boundaries.bottom", po::value<string>(), "Bottom wall boundary")
+            ("enable.load", po::value<bool>(&load_enabled), "Enable/Disable load")
+            ("enable.weight", po::value<bool>(&weight_enabled), "Enable/Disable weight")
+            ("enable.advection", po::value<bool>(&adv_enabled), "Enable/Disable advection")
+            ("enable.divergance", po::value<bool>(&div_enabled), "Enable/Disable divergance")
+            ("enable.precondition", po::value<bool>(&precond),
+             "Precondition A using whole/diagBlock of A {1|0}")
+            ("enable.one_schur_it", po::value<bool>(&one_schur_it), "One Schure iteration")
+            ("tolerance.inverse",po::value<double>(&InvMatPreTOL), "Tolerance for inverse calculation")
+            ("tolerance.schur", po::value<double>(&SchurTOL), "Tolerance to compute Schur complement")
+            ("tolerance.system", po::value<double>(&TOL), "System solver tolerance")
+            ("amg.threshold", po::value<double>(&threshold), "AMG preconditioner threshold");
 
     cmdLine_options.add(general).add(vars);
 }
 
-void parameters::setup_variables_from_cmd(po::variables_map& vm) {
+void parameters::setup_variables(po::variables_map& vm) {
     if(vm.count("help")){
         cout << cmdLine_options << "\n";
         exit(0);
@@ -134,12 +174,52 @@ void parameters::setup_variables_from_cmd(po::variables_map& vm) {
         print_local = true;
         print_matrices = true;
     }
+    if(vm.count("dim")){
+        dimension = vm["dim"].as<int>();
+    }
+    if(vm.count("adv")){
+        adv_enabled = vm["adv"].as<bool>();
+    }
+    if(vm.count("div")){
+        div_enabled = vm["div"].as<bool>();
+    }
     if(vm.count("elastic")){
         adv_enabled = false;
         div_enabled = false;
     }
+    if(vm.count("precondition")){
+        precond = vm["precondition"].as<bool>();
+    }
+    if(vm.count("inv_tol")){
+        InvMatPreTOL = vm["inv_tol"].as<double>();
+    }
+    if(vm.count("schur_tol")){
+        SchurTOL = vm["schur_tol"].as<double>();
+    }
+    if(vm.count("system_tol")){
+        TOL = vm["system_tol"].as<double>();
+    }
     if(vm.count("one_schur"))
         one_schur_it = true;
+    if(vm.count("threshold")){
+        threshold = vm["threshold"].as<double>();
+    }
+
+    if(vm.count("boundaries.ice")){
+        b_ice =  str2boundary(vm["boundaries.ice"].as<string>());
+    }
+    if(vm.count("boundaries.up")){
+        b_up =  str2boundary(vm["boundaries.up"].as<string>());
+    }
+    if(vm.count("boundaries.right")){
+        b_right =  str2boundary(vm["boundaries.right"].as<string>());
+    }
+    if(vm.count("boundaries.left")){
+        b_left =  str2boundary(vm["boundaries.left"].as<string>());
+    }
+    if(vm.count("boundaries.bottom")){
+        b_bottom =  str2boundary(vm["boundaries.bottom"].as<string>());
+    }
 }
 
 void parameters::compute_additionals() {
@@ -182,94 +262,6 @@ void parameters::compute_additionals() {
     weight = (weight_enabled)?(scale1*rho_r*gravity):0.0;
 
     load = (load_enabled)?(scale2*rho_i*gravity*h):0.0;
-}
-
-void parameters::setup_variables_from_file(std::string filename) {
-    using namespace std;
-    // create and open an archive for input
-    ifstream ifs(filename.c_str());
-    // Read parameters from file
-    string token;
-    vector<string> tokens;
-    if(!ifs.is_open()){
-        std::cerr << "Could not open " << filename << ", aborting execution" << std::endl;
-    }
-
-    while(!ifs.eof() && ifs.good()){
-        ifs >> token;
-        tokens = split(token, '=');
-        set_values(tokens);
-    }
-    ifs.close();
-}
-
-void parameters::set_values(std::vector<std::string>& tokens){
-    using namespace std;
-    if(tokens.size() != 2)
-        return;
-    string token = tokens[0], value = tokens[1];
-
-    if(token == "dimension"){
-        dimension = atoi(value.c_str());
-    }else if(token == "degree"){
-        degree = atoi(value.c_str());
-    }else if(token == "earth_width"){
-        x2 = atof(value.c_str());
-    }else if(token == "earth_depth"){
-        y1 = atof(value.c_str());
-    }else if(token == "ice_width"){
-        Ix = atof(value.c_str());
-    }else if(token == "ice_depth"){
-        h = atof(value.c_str());
-    }else if(token == "b_ice"){
-        b_ice = str2boundary(value);
-    }else if(token == "b_up"){
-        b_up = str2boundary(value);
-    }else if(token == "b_left"){
-        b_left = str2boundary(value);
-    }else if(token == "b_right"){
-        b_right = str2boundary(value);
-    }else if(token == "b_bottom"){
-        b_bottom = str2boundary(value);
-    }else if(token == "refinements"){
-        refinements = atoi(value.c_str());
-    }else if(token == "xdivisions"){
-        xdivisions = atoi(value.c_str());
-    }else if(token == "ydivisions"){
-        ydivisions = atoi(value.c_str());
-    }else if(token == "young"){
-        YOUNG = atof(value.c_str());
-    }else if(token == "poisson"){
-        POISSON = atof(value.c_str());
-    }else if(token == "eta"){
-        ETA = atof(value.c_str());
-    }else if(token == "rho_i"){
-        rho_i = atof(value.c_str());
-    }else if(token == "rho_r"){
-        rho_r = atof(value.c_str());
-    }else if(token == "gravity"){
-        gravity = atof(value.c_str());
-    }else if(token == "load_enabled"){
-        load_enabled = (value == "true" || value == "1" || value == "on");
-    }else if(token == "weight_enabled"){
-        weight_enabled = (value == "true" || value == "1" || value == "on");
-    }else if(token == "adv_enabled"){
-        adv_enabled = (value == "true" || value == "1" || value == "on");
-    }else if(token == "div_enabled"){
-        div_enabled = (value == "true" || value == "1" || value == "on");
-    }else if(token == "precondition"){
-        precond = (value == "true" || value == "1" || value == "on");
-    }else if(token == "InvMatPreTOL"){
-        InvMatPreTOL = atof(value.c_str());
-    }else if(token == "SchurTOL"){
-        SchurTOL = atof(value.c_str());
-    }else if(token == "TOL"){
-        TOL = atof(value.c_str());
-    }else if(token == "threshold"){
-        threshold = atof(value.c_str());
-    }else if(token == "one_schur_it"){
-        one_schur_it = (value == "true" || value == "1" || value == "on");
-    }
 }
 
 void parameters::validate_options(){
@@ -481,7 +473,7 @@ void parameters::write_sample_file(){
     using namespace std;
     // create and open an archive for input
     ofstream ofs;
-    string filename = "sample.config";
+    string filename = "default.cfg";
     ofs.open(filename.c_str(), ios::trunc);
 
     if(!ofs.is_open()){
@@ -492,62 +484,53 @@ void parameters::write_sample_file(){
            "dimension=2\n" <<
            "## Degree of the polynomial basis functions.\n"
            "degree=1\n" <<
-           "## Earth width.\n" <<
-           "earth_width=1.0e7\n" <<
-           "## Earth depth\n" <<
-           "earth_depth=-4e6\n" <<
-           "## Load(Ice) width.\n" <<
-           "ice_width=1e6\n" <<
-           "## Load depth.\n" <<
-           "ice_depth=2e3\n" <<
-           "## Boundary type under the ice.\n" <<
-           "b_ice=LOAD\n" <<
-           "## Boundary type on the surface.\n" <<
-           "b_up=FREE\n" <<
-           "## Boundary type on the left wall.\n" <<
-           "b_left=V_SLIP\n" <<
-           "## Boundary type on the write wall.\n" <<
-           "b_right=NEUMANN\n" <<
-           "## Boundary type on the bottom wall.\n" <<
-           "b_bottom=NO_SLIP\n" <<
            "## Number of refinement\n" <<
-           "refinements=3\n" <<
-           "## Number of initial divisions in x direction.\n" <<
-           "xdivisions=10\n" <<
-           "## Number of initial divisions in y direction.\n" <<
-           "ydivisions=4\n" <<
+           "refinement=3\n" <<
            "## Young's modulus.\n" <<
            "young=4e11\n" <<
            "## POISSON ratio.\n" <<
            "poisson=0.2\n" <<
            "## Description.\n" <<
            "eta=100\n" <<
-           "## Ice density\n" <<
-           "rho_i=917\n" <<
-           "## Earth density.\n" <<
-           "rho_r=3300\n" <<
-           "## Gravity\n" <<
-           "gravity=-9.8\n" <<
-           "## if load is incorporated in the formulation or is it zero.{0,1}\n" <<
-           "load_enabled=1\n"
-           "## if weight is incorporated in the formulation or is it zero.{0,1}\n" <<
-           "weight_enabled=0\n" <<
-           "## If advection term is enabled.{0,1}\n" <<
-           "adv_enabled=1\n" <<
-           "## If divergance term is enabled.{0,1}\n" <<
-           "div_enabled=1\n" <<
-           "## {0 = diag(A), 1 = A} Whether to rewrite block A_11 in the preconditioner.\n" <<
-           "precondition=0\n" <<
-           "## The tolerances of the inner solvers for computing the effect of inv(A).\n" <<
-           "InvMatPreTOL=1e-2\n" <<
-           "## The tolerances of the inner solvers for computing the effect of \tilde(A).\n" <<
-           "SchurTOL=1e-1\n" <<
-           "## The system tolerance controlling the relative L2-error in the global scheme.\n" <<
-           "TOL=1e-7\n" <<
-           "## AMG preconditioner threshold.\n" <<
-           "threshold=0.02\n" <<
-           "## {0,1} Whether to do only one Schure iteration on the matrix.\n" <<
-           "one_schur_it=0\n";
+           "## Divisions in x and y\n"<<
+           "[divisions]\n" <<
+           "\tx=10\n" <<
+           "\ty=4\n" <<
+           "## Earth properties.\n" <<
+           "[earth]\n" <<
+           "\twidth=1.0e7\n" <<
+           "\tdepth=-4e6\n" <<
+           "\tdensity=3300\n" <<
+           "\tgravity=-9.8\n" <<
+           "## Ice properties.\n" <<
+           "[ice]\n" <<
+           "\twidth=1e6\n" <<
+           "\tdepth=2e3\n" <<
+           "\tdensity=917\n" <<
+           "## Boundary types.\n" <<
+           "[boundaries]\n" <<
+           "\tice=LOAD\n" <<
+           "\tup=FREE\n" <<
+           "\tleft=V_SLIP\n" <<
+           "\tright=NEUMANN\n" <<
+           "\tbottom=NO_SLIP\n" <<
+           "## Toggles to enable/disable\n" <<
+           "[enable]\n"<<
+           "\tload=1\n"
+           "\tweight=0\n" <<
+           "\tadvection=1\n" <<
+           "\tdivergance=1\n" <<
+           "\tone_schur_it=0\n" <<
+           "## Use the whole block A_11 in the preconditioner.\n" <<
+           "\tprecondition=1\n" <<
+           "## Solvers tolerances\n"<<
+           "[tolerance]\n"
+           "\tinverse=1e-2\n" <<
+           "\tschur=1e-1\n" <<
+           "\tsystem=1e-7\n" <<
+           "# AMG options\n" <<
+           "[amg]\n"
+           "\tthreshold=0.02\n";
 
     ofs.close();
 }

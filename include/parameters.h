@@ -96,8 +96,10 @@ public:
     std::ostream &print_values(std::ostream &ostr);
 private:
     // Variables
+    boost::program_options::variables_map vm;
     boost::program_options::options_description general;
     boost::program_options::options_description vars;
+    boost::program_options::options_description file_options;
     boost::program_options::options_description cmdLine_options;
     // Instance flag
     static bool instanceFlag;
@@ -107,10 +109,9 @@ private:
     // Methods
     parameters();
     parameters(int argc, char* argv[]);
-    void set_env_vars();
+    void create_options();
     void compute_additionals();
-    void setup_variables_from_file(std::string filename);
-    void setup_variables_from_cmd(boost::program_options::variables_map & vm);
+    void setup_variables(boost::program_options::variables_map & vm);
 
     bFlags::boundary_Type str2boundary(std::string tempSt);
     // convert boundaries to text
@@ -119,7 +120,6 @@ private:
     bool fexists(std::string filename);
     std::vector<std::string>& split(const std::string &s, char delim, std::vector<std::string> &elems);
     std::vector<std::string> split(const std::string &s, char delim);
-    void set_values(std::vector<std::string>&);
     void validate_options();
 };
 
