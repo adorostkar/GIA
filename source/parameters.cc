@@ -254,7 +254,7 @@ void parameters::set_values(std::vector<std::string>& tokens){
     }else if(token == "weight_enabled"){
         weight_enabled = (value == "true" || value == "1" || value == "on");
     }else if(token == "adv_enabled"){
-        div_enabled = (value == "true" || value == "1" || value == "on");
+        adv_enabled = (value == "true" || value == "1" || value == "on");
     }else if(token == "div_enabled"){
         div_enabled = (value == "true" || value == "1" || value == "on");
     }else if(token == "precondition"){
