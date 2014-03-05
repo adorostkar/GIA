@@ -1,6 +1,8 @@
 /* TODO
 
  */
+#ifndef ELASTIC_BASE_H
+#define ELASTIC_BASE_H
 
 #include <deal.II/base/convergence_table.h>
 #include <deal.II/base/function.h>
@@ -54,12 +56,6 @@
 #include "rhs.h"
 #include "SurfaceDataOut.h"
 
-
-#ifndef ELASTIC_BASE_H
-#define ELASTIC_BASE_H
-
-#define ZERO 1.0e-8
-
 using namespace std;
 using namespace dealii;
 namespace Elastic
@@ -86,9 +82,10 @@ protected:
     // pointer to parameter object
     parameters *par;
     // conditional outputs
-    ConditionalOStream info_0, info_1, info_2;
+    ostream & oout;
+    //    ConditionalOStream info_0, info_1, info_2;
     // timer
-    TimerOutput computing_timer;
+    TimerOutput timer;
 
     const unsigned int						degree;
     const unsigned int						n_blocks, n_components;
@@ -126,7 +123,7 @@ protected:
     // Write vector to data file
     void write_vector(const TrilinosWrappers::BlockVector &V, string filename );
     // Computer the error
-    void compute_errors () const;
+    void compute_errors (double &u_l2_error, double &p_l2_error) const;
     void output_results ();
     void output_surface ();
 
@@ -142,12 +139,13 @@ private:
 template <int dim>
 Elastic::ElasticBase<dim>::ElasticBase (const unsigned int degree, const int _info, const int _n_blocks)
     :
-      info_0(std::cout, _info == 0),
-      info_1(std::cout, _info == 1),
-      info_2(std::cout, _info == 2),
-      computing_timer (info_0,
-                       TimerOutput::summary,
-                       TimerOutput::wall_times),
+      //      info_0(std::cout, _info == 0),
+      //      info_1(std::cout, _info == 1),
+      //      info_2(std::cout, _info == 2),
+      oout(std::cout),
+      timer (oout,
+             TimerOutput::summary,
+             TimerOutput::wall_times),
       degree (degree),
       n_blocks(_n_blocks),
       n_components(dim+1),
@@ -159,6 +157,7 @@ Elastic::ElasticBase<dim>::ElasticBase (const unsigned int degree, const int _in
       dofs_per_block(std::vector<unsigned int>(n_blocks))
 {
     par = parameters::getInstance();
+    //    oout = cout;
 }
 
 template <int dim>
@@ -554,23 +553,21 @@ Elastic::ElasticBase<dim>::assemble_system ()
             l_S.gauss_jordan();
 
         // begin Schur assembly preconditioner
-        for (unsigned int i=0; i< dim_p; ++i){// shape index i
-            for (unsigned int j=0; j < dim_p; ++j){
+        for (unsigned int i=0; i< dim_p; ++i)// shape index i
+            for (unsigned int j=0; j < dim_p; ++j)
                 cell_precond(l_p[i],l_p[j]) = l_S(i,j);
-            }
-        }
+
         // end Schur assembly preconditioner
 
         // begin assembly A preconditioner
-            for (unsigned int i=0; i< dim_u; ++i){// shape index i
-                for (unsigned int j=0; j < dim_u; ++j){
-                    cell_precond(l_u[i],l_u[j]) = l_A(i,j);
-                }
-            }
+        for (unsigned int i=0; i< dim_u; ++i)// shape index i
+            for (unsigned int j=0; j < dim_u; ++j)
+                cell_precond(l_u[i],l_u[j]) = l_A(i,j);
+
         // end assembly A preconditioner
 
         // printing local matrices
-        if(par->print_local && first){ // print_local, first
+        if(par->print_matrices && first){ // print_local, first
             write_matrix(cell_matrix,"l_m");
             write_matrix(cell_precond,"l_p");
         }
@@ -596,7 +593,7 @@ Elastic::ElasticBase<dim>::assemble_system ()
 
 template <int dim>
 void
-Elastic::ElasticBase<dim>::compute_errors () const
+Elastic::ElasticBase<dim>::compute_errors (double &u_l2_error, double &p_l2_error) const
 {
     const ComponentSelectFunction<dim>
             pressure_mask (dim, dim+1);
@@ -615,79 +612,68 @@ Elastic::ElasticBase<dim>::compute_errors () const
                                        VectorTools::L2_norm,
                                        &pressure_mask);
 
-    const double p_l2_error = cellwise_errors.l2_norm();
+    p_l2_error = cellwise_errors.l2_norm();
 
     VectorTools::integrate_difference (dof_handler, solution, exact_solution,
                                        cellwise_errors, quadrature,
                                        VectorTools::L2_norm,
                                        &velocity_mask);
 
-    const double u_l2_error = cellwise_errors.l2_norm();
+    u_l2_error = cellwise_errors.l2_norm();
     // end L2-norm
-
-
-    info_0 << "Errors: ||e_u||_L2, ||e_p||_L2 = " << u_l2_error
-           << "," << p_l2_error
-           << std::endl;
-    info_1 << u_l2_error << "\t" << p_l2_error <<"\t";
-    info_2 << u_l2_error << "\t" << p_l2_error <<"\t";
 }
 
 template <int dim>
 void
 Elastic::ElasticBase<dim>::run ()
 {
-    double t_ass=0, t_solve=0, t_tot=0;
+    int inv_iter = 0, schur_iter = 0;
 
     // Printing application variable
-    ostringstream var_str;
-    par->print_variables(var_str);
-    info_0 << var_str.str();
+    par->print_variables(oout);
 
     create_geometry();
 
-    computing_timer.enter_section("DOF setup");
+    timer.enter_section("DOF setup");
     setup_dofs ();
-    computing_timer.exit_section("DOF setup");
+    timer.exit_section("DOF setup");
 
     /// Terminal output
-    info_0 << "   Number of active cells: "
-           << triangulation.n_active_cells()
-           << "\n   Number of degrees of freedom: "
-           << dof_handler.n_dofs()
-    << " (" << dofs_per_component[0];
-    for(int i=1; i<n_components;++i)
-        info_0 << " + " << dofs_per_component[i];
-    info_0 << ")" << std::endl;
+    oout << "Active cells: "
+         << triangulation.n_active_cells() << std::endl;
 
-    par->dofs << triangulation.n_active_cells() << "\t(" << dofs_per_component[0];
-    for(int i=1; i<n_components;++i)
-        par->dofs << " + " << dofs_per_component[i];
-    par->dofs << ")" << std::endl;
+    oout << "Degrees of freedom: "
+         << dof_handler.n_dofs() << " (";
+    std::copy(dofs_per_component.begin(),
+              dofs_per_component.end(),
+              std::ostream_iterator<int>(oout,"+") );
+    oout << "\b)" << std::endl;
 
-    info_0 << "   Assembling ... ";
-    computing_timer.enter_section("Assembling");
+    oout << GREEN << "\tAssembling | " << flush;
+    timer.enter_section("Assembling");
     assemble_system ();
-    computing_timer.exit_section("Assembling");
-    info_0 << " DONE" << std::endl;
+    timer.exit_section();
 
-    info_0 << "   AMG preconditioners ... ";
-    computing_timer.enter_section("AMG preconditioners");
+    oout << "Setup AMG | " << flush;
+    timer.enter_section("Setup AMG");
     setup_AMG ();
-    computing_timer.exit_section("AMG preconditioners");
-    info_0 << " DONE" << std::endl;
+    timer.exit_section();
 
-    if(par->print_matrices ) // define print_data
-        generate_matlab_study();
-
-    int inv_iter = 0, schur_iter = 0;
-
-    info_0 << "   system solver ... ";
-    computing_timer.enter_section("System solver");
+    oout << "Solve system | " << flush;
+    timer.enter_section("System solver");
     solve ();
-    computing_timer.exit_section("System solver");
-    info_0 << " DONE" << std::endl;
+    timer.exit_section();
 
+    oout << "Extract results | " << flush;
+    output_results ();
+
+    oout << "Extract surface" << RESET << std::endl;
+    output_surface();
+
+    if(par->print_matrices ){
+        generate_matlab_study();
+        oout << RED << ">>> Printing matrices in Matlab format <<<" << RESET << std::endl << std::flush;
+    }
     // printing solver info
     for(unsigned int i = 0; i < par->inv_iterations.size(); i++){
         inv_iter   += par->inv_iterations[i];
@@ -695,35 +681,21 @@ Elastic::ElasticBase<dim>::run ()
     }
 
     // average inner iterations
-    inv_iter = (int)(1.0*inv_iter/par->inv_iterations.size());
-    schur_iter = (int)(1.0*schur_iter/par->schur_iterations.size());
+    inv_iter /= par->inv_iterations.size();
+    schur_iter /=par->schur_iterations.size();
 
-    output_results ();
-    output_surface();
+    if(par->x2 == par->Ix ){
+        double u_er = 0, p_er = 0;
+        compute_errors (u_er, p_er);
 
-    if(par->x2 == par->Ix )
-        compute_errors ();
+        oout << "Errors: ||e_u||_L2, ||e_p||_L2 = "
+             << u_er << "," << p_er << std::endl;
+    }
 
-    int tempSpace = 15;
-    info_0   << "GMRES iterations: system(<inv>,<schur>) = "
-             << par->system_iter
-             << "(" << inv_iter << ", " << schur_iter << ")"
-             << endl;
-
-    info_1   << left << setw(tempSpace) << setfill(' ') << par->system_iter
-             << left << setw(tempSpace) << setfill(' ') << schur_iter
-             << left << setw(tempSpace) << setfill(' ') << t_ass
-             << left << setw(tempSpace) << setfill(' ') << t_solve
-             << left << setw(tempSpace) << setfill(' ') << par->dofs.str()
-             << endl;
-
-    info_2   << left << setw(tempSpace) << setfill(' ') << par->system_iter
-             << left << setw(tempSpace) << setfill(' ') << inv_iter
-             << left << setw(tempSpace) << setfill(' ') << schur_iter
-             << left << setw(tempSpace) << setfill(' ') << t_ass
-             << left << setw(tempSpace) << setfill(' ') << t_solve
-             << left << setw(tempSpace) << setfill(' ') << par->dofs.str()
-             << endl;
+    oout   << "GMRES iterations: system(P_00,Schur) = "
+           << par->system_iter
+           << "(" << inv_iter << ", " << schur_iter << ")"
+           << endl;
 }
 
 template <int dim>
@@ -782,7 +754,6 @@ Elastic::ElasticBase<dim>::output_surface() {
 
     ofstream output (filename.str().c_str());
     data_out.write_gnuplot (output);
-    info_0 << "   Extracting surface values ..." << endl;
 }
 
 // Change string to uppercase
@@ -799,7 +770,6 @@ Elastic::ElasticBase<dim>::to_upper(const std::string str){
 template <int dim>
 void
 Elastic::ElasticBase<dim>::generate_matlab_study(){
-    info_0 << "   ** Printing matrices in Matlab form **" << std::endl << std::flush;
     for(int i=0; i<n_blocks; ++i){
         for(int j=0; j<n_blocks; ++j){
             string a = "a" + std::to_string(i) + std::to_string(j);

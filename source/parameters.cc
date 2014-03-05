@@ -171,7 +171,6 @@ void parameters::setup_variables(po::variables_map& vm) {
         exit(0);
     }
     if(vm.count("matrix")){
-        print_local = true;
         print_matrices = true;
     }
     if(vm.count("dim")){
@@ -395,7 +394,6 @@ std::ostream & parameters::print_values(std::ostream &ostr){
     ostr<< setw(c1) << "threshold=" << threshold << endl;
     ostr<< setw(c1) << "one_schur_it=" << one_schur_it << endl;
     ostr<< setw(c1) << "info=" << info << endl;
-    ostr<< setw(c1) << "print_local=" << print_local << endl;
     ostr<< setw(c1) << "print_matrices=" << print_matrices << endl;
     ostr<< setw(c1) << "system_iter=" << system_iter << endl;
     ostr<< setw(c1) << "load=" << load << endl;
@@ -419,51 +417,36 @@ std::ostream & parameters::print_values(std::ostream &ostr){
 std::ostream & parameters::print_variables(std::ostream & outStr){
     using namespace std;
     ios::fmtflags f(outStr.flags());
-    int c1=25, c2=20, c3=25;
-
-    ostringstream str, wl_e, ad_e;
-    wl_e << "(" << weight_enabled << ", " << load_enabled << ")";
-    ad_e << "(" << adv_enabled <<", "<< div_enabled <<")";
-    str << TOL << "(" << InvMatPreTOL << ",";
-    if(one_schur_it)
-        str << "x" << ")";
-    else
-        str<< SchurTOL << ")";
-    string title = (x2 == Ix) ? "Case: Footing" : "Case: Uniform load";
-    (precond == 0) ? title.append(", P_00: diag(A)") : title.append(", P_00: A");
+    int c1 = (one_schur_it) ? 15 : 22;
 
     outStr << left;
-    outStr << title << endl;
-    outStr << "\t"
-           << setw(c1) << "YOUNG = " << setw(c2) << YOUNG*S
-           << setw(c3) << "POISSON = " << POISSON
+    outStr << "Problem:" << endl;
+    outStr << setw(c1) << "\tP_00: ";
+    (precond) ? outStr << "A_00" << endl : outStr << "diag(A_00)" << endl;
+
+    outStr << setw(c1) << "\tRefinements: " << refinements << endl;
+
+
+    if(one_schur_it)
+        outStr << setw(c1) << "\tSystemTol: " << TOL << endl;
+    else
+        outStr << setw(c1) << "\tTOL(P_00,Schur): "
+               << TOL << "(" << InvMatPreTOL << ", " << SchurTOL << ")"
            << endl;
 
-    outStr << "\t"
-           << setw(c1) << "scale1(L^2/(SU)) = " << setw(c2) << scale1
-           << setw(c3) << "ETA = " << ETA
-           << endl;
+    outStr << setw(c1) << "\tAdv/Div: ";
+    (adv_enabled) ? outStr << "enabled, " : outStr << RED << "disabled, " << RESET;
+    (div_enabled) ? outStr << "enabled" << endl : outStr << RED << "disabled" << RESET<< endl;
 
-    outStr << "\t"
-           << setw(c1) << "scale3 (L/S)*rho_r*g = " << setw(c2) << scale3
-           << setw(c3) << "scale2(L/SU) = " << scale2
-           << endl;
+    outStr << setw(c1) << "\tLoad/Weight: ";
+    (load_enabled) ? outStr << "enabled, " : outStr << RED << "disabled, " << RESET;
+    (weight_enabled) ? outStr << "enabled" << endl : outStr << RED << "disabled" << RESET << endl;
 
-    outStr << "\t"
-           << setw(c1) << "weight/load enabled=" << setw(c2) << wl_e.str()
-           << setw(c3) << "adv/div enabled" << ad_e.str()
-           << endl;
-
-    outStr << "\t"
-           << setw(c1) << "refinements" << setw(c2) << refinements
-           << setw(c3) << "AMG threshold" << threshold
-           << endl;
-
-    outStr << "\t"
-           << setw(c1) << "TOL(Inner,Schur)" << setw(c2) << str.str()
-           << endl;
-
-    outStr << "\t" << "Earth and ice (width, depth) = (" << x2 << ", " << y1 << "), (" << Ix << ", " << h/L << ")" << endl;
+    outStr << setw(c1) << "\tPoisson: " << POISSON << endl;
+    outStr << setw(c1) << "\tYoung: " << YOUNG*S << endl;
+    outStr << setw(c1) << "\tEta: " << ETA << endl;
+    outStr << setw(c1) << "\tEarth (Km)" << x2*L*1e-3 << ", " << y1*L*1e-3 << endl;
+    outStr << setw(c1) << "\tIce (Km)" << Ix*L*1e-3 << ", " << h*1e-3 << endl << endl;
 
     outStr.flags(f);
     return outStr;

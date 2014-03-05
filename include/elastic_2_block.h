@@ -1,3 +1,6 @@
+#ifndef ELASTIC_2_BLOCK_H
+#define ELASTIC_2_BLOCK_H
+
 #include <deal.II/base/convergence_table.h>
 #include <deal.II/base/function.h>
 #include <deal.II/base/logstream.h>
@@ -46,11 +49,6 @@
 #include "elastic_base.h"
 #include "parameters.h"
 #include "preconditioner_2block.h"
-
-#ifndef ELASTIC_2_BLOCK_H
-#define ELASTIC_2_BLOCK_H
-
-#define ZERO 1.0e-8
 
 using namespace std;
 using namespace dealii;

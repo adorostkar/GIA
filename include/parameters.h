@@ -1,5 +1,8 @@
 /** TODO
  */
+#ifndef PARAMETERS_H_
+#define PARAMETERS_H_
+
 #include <boost/program_options.hpp>
 #include <cstdlib>
 #include <cstdio>
@@ -12,8 +15,29 @@
 #include <sstream>
 #include <sys/stat.h>
 
-#ifndef PARAMETERS_H_
-#define PARAMETERS_H_
+#define ZERO 1.0e-8
+
+#ifdef __APPLE__
+    #define RESET   "\033[0m"
+    #define RED     "\033[31m"
+    #define GREEN   "\033[32m"
+    #define BLUE    "\033[34m"
+    #define WHITE   "\033[37m"
+    #define BOLDRED     "\033[1m\033[31m"
+    #define BOLDGREEN   "\033[1m\033[32m"
+    #define BOLDBLUE    "\033[1m\033[34m"
+    #define BOLDWHITE   "\033[1m\033[37m"
+#else
+    #define RESET   ""
+    #define RED     ""
+    #define GREEN   ""
+    #define BLUE    ""
+    #define WHITE   ""
+    #define BOLDRED     ""
+    #define BOLDGREEN   ""
+    #define BOLDBLUE    ""
+    #define BOLDWHITE   ""
+#endif
 
 /*! Boundary types enumerator,
  * Different available boundaries.
@@ -69,7 +93,7 @@ public:
      * \brief print_matrices prints global matrices to output
      * \brief one_schur_it uses one iteration to compute Schure
      */
-    bool						precond, print_local,print_matrices, one_schur_it;
+    bool						precond, print_matrices, one_schur_it;
 
     /*!
      * \brief load_enabled is load enabled on the surface.
@@ -83,8 +107,6 @@ public:
     std::vector<unsigned int>	inv_iterations, schur_iterations;
 
     std::string					str_poisson;
-    std::stringstream			dofs;
-
 
     // Methods
     ~parameters();

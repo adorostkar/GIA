@@ -1,3 +1,6 @@
+#ifndef SURFACEDATAOUT_H
+#define SURFACEDATAOUT_H
+
 #include <deal.II/grid/tria.h>
 #include <deal.II/grid/tria_accessor.h>
 #include <deal.II/grid/tria_boundary_lib.h>
@@ -10,9 +13,6 @@
 #include <sstream>
 #include <string>
 #include <typeinfo>
-
-#ifndef SURFACEDATAOUT_H
-#define SURFACEDATAOUT_H
 
 template<int dim>
 class SurfaceDataOut : public DataOutFaces<dim> {

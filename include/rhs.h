@@ -1,14 +1,12 @@
 /** TODO
 */
 
-#include <deal.II/base/function.h>
-
-#include "parameters.h"
-
 #ifndef RHS_H
 #define RHS_H
 
-#define ZERO 1.0e-8
+#include <deal.II/base/function.h>
+
+#include "parameters.h"
 
 using namespace std;
 using namespace dealii;
@@ -26,7 +24,7 @@ namespace Elastic
 		virtual void vector_value (const Point<dim> &p, Vector<double>   &value) const;
 	private:
 		// pointer to parameter object
-		parameters *par;
+        parameters *par;
 	};
 }
 

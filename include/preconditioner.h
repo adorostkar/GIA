@@ -1,5 +1,7 @@
 /*! TODO
  */
+#ifndef PRECONDITIONER_H
+#define PRECONDITIONER_H
 
 #include <deal.II/lac/trilinos_sparse_matrix.h>
 #include <deal.II/lac/trilinos_block_sparse_matrix.h>
@@ -16,11 +18,6 @@
 #include <typeinfo>
 
 #include "parameters.h"
-
-#ifndef PRECONDITIONER_H
-#define PRECONDITIONER_H
-
-#define ZERO 1.0e-8
 
 using namespace std;
 using namespace dealii;
@@ -41,7 +38,7 @@ namespace Elastic
         
     private:
     	// pointer to parameter object
-    	parameters *par;
+        parameters *par;
         const SmartPointer<const TrilinosWrappers::BlockSparseMatrix> s_matrix;
         const PreconditionerA  &a0_preconditioner;
         const PreconditionerA  &a1_preconditioner;

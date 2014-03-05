@@ -2,6 +2,9 @@
 
 */
 
+#ifndef BOUNDARY_H
+#define BOUNDARY_H
+
 #include <deal.II/base/function.h>
 
 #include <fstream>
@@ -10,11 +13,6 @@
 #include <typeinfo>
 
 #include "parameters.h"
-
-#ifndef BOUNDARY_H
-#define BOUNDARY_H
-
-#define ZERO 1.0e-8
 
 using namespace std;
 using namespace dealii;
@@ -32,7 +30,7 @@ namespace Elastic
 		virtual void vector_value (const Point<dim> &p, Vector<double>   &value) const;
 	private:
 		// pointer to parameter object
-		parameters *par;
+        parameters *par;
     };
 }
 

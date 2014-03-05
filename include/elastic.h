@@ -2,6 +2,9 @@
 
  */
 
+#ifndef ELASTIC_H
+#define ELASTIC_H
+
 #include <deal.II/base/convergence_table.h>
 #include <deal.II/base/function.h>
 #include <deal.II/base/logstream.h>
@@ -55,11 +58,6 @@
 #include "preconditioner.h"
 #include "rhs.h"
 #include "SurfaceDataOut.h"
-
-#ifndef ELASTIC_H
-#define ELASTIC_H
-
-#define ZERO 1.0e-8
 
 using namespace std;
 using namespace dealii;

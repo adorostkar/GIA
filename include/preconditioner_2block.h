@@ -1,6 +1,9 @@
 /*! TODO
  */
 
+#ifndef PRECONDITIONER_2BLOCK_H
+#define PRECONDITIONER_2BLOCK_H
+
 #include <deal.II/lac/trilinos_sparse_matrix.h>
 #include <deal.II/lac/trilinos_block_sparse_matrix.h>
 #include <deal.II/lac/trilinos_vector.h>
@@ -16,11 +19,6 @@
 #include <typeinfo>
 
 #include "parameters.h"
-
-#ifndef PRECONDITIONER_2BLOCK_H
-#define PRECONDITIONER_2BLOCK_H
-
-#define ZERO 1.0e-8
 
 using namespace std;
 using namespace dealii;

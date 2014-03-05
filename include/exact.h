@@ -2,6 +2,9 @@
 
 */
 
+#ifndef EXACT_H
+#define EXACT_H
+
 #include <deal.II/base/function.h>
 
 #include <fstream>
@@ -10,11 +13,6 @@
 #include <typeinfo>
 
 #include "parameters.h"
-
-#ifndef EXACT_H
-#define EXACT_H
-
-#define ZERO 1.0e-8
 
 using namespace std;
 using namespace dealii;
@@ -31,7 +29,7 @@ namespace Elastic
 								   Vector<double>   &value) const;
 	private:
 		// pointer to parameter object
-		parameters *par;
+        parameters *par;
 	};
 }
 	

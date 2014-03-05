@@ -9,12 +9,10 @@
 #include <string>
 #include <typeinfo>
 
-#include "parameters.h"
-
 #ifndef COEFFICIENT_H
 #define COEFFICIENT_H
 
-#define ZERO 1.0e-8
+#include "parameters.h"
 
 using namespace std;
 using namespace dealii;
@@ -47,7 +45,7 @@ namespace Elastic
 									  const unsigned int              component = 0) const;
 	private:
 		// pointer to parameter object
-		parameters *par;
+        parameters *par;
 	};
 }
 /*
