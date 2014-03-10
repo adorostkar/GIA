@@ -132,8 +132,6 @@ vmult (TrilinosWrappers::BlockVector       &dst,
         deallog << "\t\tSchur " << control_s.last_step() << ", with TOL = "<< par->SchurTOL*tmp.l2_norm() << std::endl;
     }
 }
-/*
-     **************************************
-*/
+
 
 #endif

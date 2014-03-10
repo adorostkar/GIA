@@ -34,9 +34,7 @@ namespace Elastic
     };
 }
 
-/*
-     ------------- IMPLEMENTATION --------------
-*/
+//     ------------- IMPLEMENTATION --------------
 
 template <int dim>
 double
@@ -44,12 +42,8 @@ Elastic::BoundaryValues<dim>::value (const Point<dim>  &p, const unsigned int co
 {
     Assert (component < this->n_components, ExcIndexRange (component, 0, this->n_components));
 
-    if ( /*(par->load_enabled) && */(component == 1) ){
-//        if( /*(std::fabs(p[1] - par->y2) < ZERO) && */( p[0] <= par->Ix ) ){
-//            std::cout << p[0] << std::endl;
-            return par->load;//*par->load_enabled;
-//        }
-    }
+    if (component == 1)
+        return par->load;
     return 0;
 }
 
@@ -60,10 +54,5 @@ Elastic::BoundaryValues<dim>::vector_value (const Point<dim> &p, Vector<double> 
     for (unsigned int c=0; c < this->n_components; ++c)
         values(c) = BoundaryValues<dim>::value (p, c);
 }
-// End Dirichlet Boundary conditions
-
-/*
-     **************************************
-*/
 
 #endif

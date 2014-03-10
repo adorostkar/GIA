@@ -183,8 +183,4 @@ Elastic::ElasticProblem<dim>::solve ()
     deallog << "\t\tSchur " << ElasticBase<dim>::par->system_iter << std::endl;
 }
 
-/*
- **************************************
- */
-
 #endif

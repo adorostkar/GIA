@@ -68,8 +68,5 @@ Elastic::ExactSolution<dim>::vector_value (const Point<dim> &p, Vector<double>  
         }
 }
 // end Exact solution
-/*
-     **************************************
-*/
 
 #endif

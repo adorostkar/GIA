@@ -73,12 +73,6 @@ double
 Elastic::Coefficients<dim>::mu_value (const Point<dim> &p,
                                       const unsigned int /*component*/) const
 {
-    /*// reserved for variable mu(x,y)
-         if (p.square() < 0.5*0.5)
-         return 20;
-         else
-         return 1;
-         */
     return mu;
 }
 template <int dim>
@@ -93,12 +87,6 @@ Elastic::Coefficients<dim>::mu_value_list (const std::vector<Point<dim> > &point
 
     for (unsigned int i=0; i<n_points; ++i)
     {
-        // // reserved for variable mu(x,y)
-        // if (points[i].square() < 0.5*0.5)
-        // values[i] = 20;
-        // else
-        // values[i] = 1;
-
         values[i] = mu;
     }
 }
@@ -108,12 +96,6 @@ double
 Elastic::Coefficients<dim>::beta_value (const Point<dim> &p,
                                         const unsigned int /*component*/) const
 {
-    // // reserved for variable beta(x,y)
-    // if (p.square() < 0.5*0.5)
-    // 	return 20;
-    // else
-    // 	return 1;
-
     return beta;
 }
 
@@ -129,18 +111,8 @@ Elastic::Coefficients<dim>::beta_value_list (const 	std::vector<Point<dim> >		&p
 
     for (unsigned int i=0; i<n_points; ++i)
     {
-        /* // reserved for variable beta(x,y)
-             if (points[i].square() < 0.5*0.5)
-             values[i] = 20;
-             else
-             values[i] = 1;
-             */
         values[i] = beta;
     }
 }
-// end coefficients
-/*
-     **************************************
-*/
 
 #endif

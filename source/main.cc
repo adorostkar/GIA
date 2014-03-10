@@ -5,13 +5,15 @@
 int main (int argc, char** argv)
 {
 	using namespace std;
+    using namespace dealii;
+
     parameters *par;
+    int width = 30;
 	try
     {
-		using namespace dealii;
 		
 		// MPI_Init (&argc, &argv);
-		Utilities::MPI::MPI_InitFinalize mpi_initialization (argc, argv);
+        Utilities::MPI::MPI_InitFinalize mpi_initialization (argc, argv);
 		
         // get instance of parameters
         par = parameters::getInstance(argc, argv);
@@ -46,26 +48,20 @@ int main (int argc, char** argv)
     }
 	catch (std::exception &exc)
     {
-		std::cerr << std::endl << std::endl
-		<< "----------------------------------------------------"
-		<< std::endl;
+        std::cerr << setw(width) << setfill('-') << "" << std::endl;
 		std::cerr << "Exception on processing: " << std::endl
 		<< exc.what() << std::endl
 		<< "Aborting!" << std::endl
-		<< "----------------------------------------------------"
-		<< std::endl;
+        << setw(width) << setfill('-') << "" <<std::endl;
 		
 		return 1;
     }
 	catch (...)
     {
-		std::cerr << std::endl << std::endl
-		<< "----------------------------------------------------"
-		<< std::endl;
+        std::cerr << setw(width) << setfill('-') << "" << std::endl;
 		std::cerr << "Unknown exception!" << std::endl
 		<< "Aborting!" << std::endl
-		<< "----------------------------------------------------"
-		<< std::endl;
+        << setw(width) << setfill('-') << "" << std::endl;
 		return 1;
     }
 	delete par;

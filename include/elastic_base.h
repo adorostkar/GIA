@@ -83,7 +83,6 @@ protected:
     parameters *par;
     // conditional outputs
     ostream & oout;
-    //    ConditionalOStream info_0, info_1, info_2;
     // timer
     TimerOutput timer;
 
@@ -139,9 +138,6 @@ private:
 template <int dim>
 Elastic::ElasticBase<dim>::ElasticBase (const unsigned int degree, const int _info, const int _n_blocks)
     :
-      //      info_0(std::cout, _info == 0),
-      //      info_1(std::cout, _info == 1),
-      //      info_2(std::cout, _info == 2),
       oout(std::cout),
       timer (oout,
              TimerOutput::summary,
@@ -157,7 +153,6 @@ Elastic::ElasticBase<dim>::ElasticBase (const unsigned int degree, const int _in
       dofs_per_block(std::vector<unsigned int>(n_blocks))
 {
     par = parameters::getInstance();
-    //    oout = cout;
 }
 
 template <int dim>
@@ -422,9 +417,9 @@ Elastic::ElasticBase<dim>::assemble_system ()
 
     /*! @todo check if this works correctly for 3d as well.
      */
-    Tensor<1,dim> e(true);
-    for(int d =0; d <dim-1;d++)
-        e[d] = 0;
+    // Set everything to zero
+    Tensor<1,dim> e(0);
+    // Change the last component to one
     e[dim-1] = 1.0;
 
     std::vector<SymmetricTensor<2,dim> > symgrad_phi_u	(dofs_per_cell);
@@ -781,7 +776,6 @@ Elastic::ElasticBase<dim>::generate_matlab_study(){
     write_vector(system_rhs,"rhs");
     // printing: matrices, par->info
 
-    /// *******************************
     string extension;
     // Generate Matlab filename
     ostringstream tempOS;
@@ -868,10 +862,10 @@ Elastic::ElasticBase<dim>::write_matrix(const TrilinosWrappers::SparseMatrix &M,
     int PSC = 13;
     //Printing in matlab form
     string name = "data_" + filename + ".dat";
-    std::ofstream matrix (name.c_str());
-    matrix << setprecision(PSC);//std::setprecision(std::numeric_limits<double>::digits10);
-    M.print(matrix);
-    matrix.close();
+    std::ofstream matFile (name.c_str());
+    matFile << setprecision(PSC);
+    M.print(matFile);
+    matFile.close();
 }
 
 // Create a matlab file with vectors
@@ -881,10 +875,10 @@ Elastic::ElasticBase<dim>::write_vector(const TrilinosWrappers::BlockVector &V, 
     int PSC = 13;
     //Printing in matlab form
     string name = "data_" + filename + ".dat";
-    std::ofstream vector (name.c_str());
-    vector << setprecision(PSC);//std::setprecision(std::numeric_limits<double>::digits10);
-    V.print(vector);
-    vector.close();
+    std::ofstream vecFile (name.c_str());
+    vecFile << setprecision(PSC);
+    V.print(vecFile);
+    vecFile.close();
 }
 
 template <int dim>
@@ -892,9 +886,9 @@ void
 Elastic::ElasticBase<dim>::write_matrix(const FullMatrix<double> &M, string filename ){
     //Printing in matlab form
     string name = "data_" + filename + ".dat";
-    std::ofstream matrix (name.c_str());
-    M.print(matrix,10);
-    matrix.close();
+    std::ofstream matFile (name.c_str());
+    M.print(matFile,10);
+    matFile.close();
 }
 
 

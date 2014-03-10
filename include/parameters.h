@@ -17,7 +17,7 @@
 
 #define ZERO 1.0e-8
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__linux__)
     #define RESET   "\033[0m"
     #define RED     "\033[31m"
     #define GREEN   "\033[32m"

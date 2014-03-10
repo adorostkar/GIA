@@ -49,8 +49,5 @@ Elastic::RightHandSide<dim>::vector_value (const Point<dim> &p, Vector<double>  
         values(c) = RightHandSide<dim>::value (p, c);
 }
 // End right hand side
-/*
-     **************************************
-*/
 
 #endif
