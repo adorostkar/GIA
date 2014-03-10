@@ -56,7 +56,6 @@
 #include "rhs.h"
 #include "SurfaceDataOut.h"
 
-using namespace std;
 using namespace dealii;
 namespace Elastic
 {
@@ -294,7 +293,7 @@ Elastic::ElasticBase<dim>::setup_dofs (){
 
     // Print sparsity pattern of the matrix
     if(par->print_matrices){
-        std::ofstream out ("sparsity_pattern.gnuplot");
+        std::ofstream out ("sparsity_pattern.1");
         sparsity_pattern.print_gnuplot (out);
         out.close();
     }
@@ -418,8 +417,8 @@ Elastic::ElasticBase<dim>::assemble_system ()
     /*! @todo check if this works correctly for 3d as well.
      */
     // Set everything to zero
-    Tensor<1,dim> e(0);
     // Change the last component to one
+    Tensor<1,dim> e(0);
     e[dim-1] = 1.0;
 
     std::vector<SymmetricTensor<2,dim> > symgrad_phi_u	(dofs_per_cell);
@@ -562,7 +561,7 @@ Elastic::ElasticBase<dim>::assemble_system ()
         // end assembly A preconditioner
 
         // printing local matrices
-        if(par->print_matrices && first){ // print_local, first
+        if(par->print_matrices && first){
             write_matrix(cell_matrix,"l_m");
             write_matrix(cell_precond,"l_p");
         }
@@ -666,8 +665,8 @@ Elastic::ElasticBase<dim>::run ()
     output_surface();
 
     if(par->print_matrices ){
+        oout << RED << "\t\t>>> Printing matrices in Matlab format <<<" << RESET << std::endl;
         generate_matlab_study();
-        oout << RED << ">>> Printing matrices in Matlab format <<<" << RESET << std::endl << std::flush;
     }
     // printing solver info
     for(unsigned int i = 0; i < par->inv_iterations.size(); i++){
@@ -690,7 +689,7 @@ Elastic::ElasticBase<dim>::run ()
     oout   << "GMRES iterations: system(P_00,Schur) = "
            << par->system_iter
            << "(" << inv_iter << ", " << schur_iter << ")"
-           << endl;
+           << std::endl;
 }
 
 template <int dim>
