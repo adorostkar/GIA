@@ -83,13 +83,12 @@ vmult (TrilinosWrappers::BlockVector       &dst,
     SolverGMRES<TrilinosWrappers::Vector> // SchurTOL
             solver_A (control_inv, SolverGMRES<TrilinosWrappers::Vector >::AdditionalData(100));
 
+    deallog.push("A1");
     solver_A.solve(s_matrix->block(0,0), dst.block(0), src.block(0), a_preconditioner);
+    deallog.pop();
 
     // Push number of inner iterations to solve first block.
     par->inv_iterations.push_back(control_inv.last_step());// + control_inv1.last_step());
-
-    // Write number of inner iterations to log file.
-    deallog << "\t\tInner A block" << control_inv.last_step() << ", with TOL = "<< inv_relative_tol << std::endl;
 
     s_matrix->block(1,0).residual(tmp, dst.block(0),src.block(1));
     tmp *= -1;
@@ -110,13 +109,12 @@ vmult (TrilinosWrappers::BlockVector       &dst,
         SolverGMRES<TrilinosWrappers::Vector> // SchurTOL
                 solver (control_s, SolverGMRES<TrilinosWrappers::Vector >::AdditionalData(100));
 
+        deallog.push("Schur");
         solver.solve(s_matrix->block(1,1), dst.block(1), tmp, s_preconditioner);
+        deallog.pop();
 
         // Push number of inner iterations for computing Schure complement.
         par->schur_iterations.push_back(control_s.last_step());
-
-        // Write number of inner iterations for computing Schure complement to file.
-        deallog << "\t\tSchur " << control_s.last_step() << ", with TOL = "<< schur_relative_tol << std::endl;
     }
 }
 

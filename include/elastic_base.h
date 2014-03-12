@@ -43,7 +43,6 @@
 #include <deal.II/numerics/matrix_tools.h>
 #include <deal.II/numerics/vector_tools.h>
 
-
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -102,8 +101,8 @@ protected:
     TrilinosWrappers::BlockVector			system_rhs, load, body_force, precond_rhs;
 
     /*!
-     * Virtual methods which should be
-     * given in the child class to set up the preconditioner
+     * Purly virtual methods.
+     * Need to be implemented in the child class
      */
     virtual void setup_AMG () = 0;
     virtual void solve () = 0;
@@ -131,9 +130,8 @@ private:
 };
 }
 
-/*
- ------------- IMPLEMENTATION --------------
- */
+// ------------- IMPLEMENTATION --------------
+
 template <int dim>
 Elastic::ElasticBase<dim>::ElasticBase (const unsigned int degree, const int _info, const int _n_blocks)
     :

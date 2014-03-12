@@ -40,7 +40,6 @@
 #include <deal.II/numerics/matrix_tools.h>
 #include <deal.II/numerics/vector_tools.h>
 
-
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -132,15 +131,19 @@ Elastic::Elastic2Blocks<dim>::solve ()
 
     SolverControl solver_control (ElasticBase<dim>::system_matrix.m(),
                                   ElasticBase<dim>::par->TOL*ElasticBase<dim>::system_rhs.l2_norm());
+    solver_control.enable_history_data();
+    solver_control.log_history(true);
+    solver_control.log_result(true);
 
     SolverGMRES<TrilinosWrappers::BlockVector>
             solver (solver_control,
                     SolverGMRES<TrilinosWrappers::BlockVector >::AdditionalData(100));
 
+    deallog.push("Outer");
     solver.solve(ElasticBase<dim>::system_matrix, ElasticBase<dim>::solution, ElasticBase<dim>::system_rhs, preconditioner);
+    deallog.pop();
 
     ElasticBase<dim>::par->system_iter = solver_control.last_step();
-    deallog << "\t\tSchur " << ElasticBase<dim>::par->system_iter << std::endl;
 }
 
 

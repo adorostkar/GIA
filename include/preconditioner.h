@@ -84,7 +84,9 @@ vmult (TrilinosWrappers::BlockVector       &dst,
     SolverGMRES<TrilinosWrappers::Vector> // SchurTOL
             solver0 (control_inv0, SolverGMRES<TrilinosWrappers::Vector >::AdditionalData(100));
 
+    deallog.push("A1");
     solver0.solve(s_matrix->block(0,0), dst.block(0), src.block(0), a0_preconditioner);
+    deallog.pop();
 
     // Solve the block system for A1^{-1}
     SolverControl control_inv1 (s_matrix->block(1,1).m(),
@@ -95,14 +97,13 @@ vmult (TrilinosWrappers::BlockVector       &dst,
 
     SolverGMRES<TrilinosWrappers::Vector> // SchurTOL
             solver1 (control_inv1, SolverGMRES<TrilinosWrappers::Vector >::AdditionalData(100));
+
+    deallog.push("A2");
     solver1.solve(s_matrix->block(1,1), dst.block(1), src.block(1), a1_preconditioner);
+    deallog.pop();
 
     // Push number of inner iterations to solve first block.
-    par->inv_iterations.push_back(control_inv0.last_step());// + control_inv1.last_step());
-
-    // Write number of inner iterations to log file.
-    deallog << "\t\tInner First block" << control_inv0.last_step() << ", with TOL = "<< par->InvMatPreTOL*src.block(0).l2_norm() << std::endl;
-    deallog << "\t\tInner second block" << control_inv1.last_step() << ", with TOL = "<< par->InvMatPreTOL*src.block(1).l2_norm() << std::endl;
+    par->inv_iterations.push_back((control_inv0.last_step() + control_inv1.last_step())/2);
 
     s_matrix->block(2,0).residual(tmp, dst.block(0),src.block(2));
     tmp *= -1;
@@ -123,13 +124,12 @@ vmult (TrilinosWrappers::BlockVector       &dst,
         SolverGMRES<TrilinosWrappers::Vector> // SchurTOL
                 solver (control_s, SolverGMRES<TrilinosWrappers::Vector >::AdditionalData(100));
 
+        deallog.push("Schur");
         solver.solve(s_matrix->block(2,2), dst.block(2), tmp, s_preconditioner);
+        deallog.pop();
 
         // Push number of inner iterations for computing Schure complement.
         par->schur_iterations.push_back(control_s.last_step());
-
-        // Write number of inner iterations for computing Schure complement to file.
-        deallog << "\t\tSchur " << control_s.last_step() << ", with TOL = "<< par->SchurTOL*tmp.l2_norm() << std::endl;
     }
 }
 
