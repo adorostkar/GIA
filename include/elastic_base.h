@@ -116,7 +116,7 @@ protected:
     // Write matrix to data file
     void write_matrix(const FullMatrix<double> &M, string filename );
     // Write matrix to data file
-    void write_matrix(const TrilinosWrappers::SparseMatrix &M, string filename );
+    void write_matrix(TrilinosWrappers::SparseMatrix &M, string filename );
     // Write vector to data file
     void write_vector(const TrilinosWrappers::BlockVector &V, string filename );
     // Computer the error
@@ -287,13 +287,6 @@ Elastic::ElasticBase<dim>::setup_dofs (){
         DoFTools::make_sparsity_pattern (dof_handler, bcsp, constraints, true);
 
         sparsity_pattern.copy_from(bcsp);
-    }
-
-    // Print sparsity pattern of the matrix
-    if(par->print_matrices){
-        std::ofstream out ("sparsity_pattern.1");
-        sparsity_pattern.print_gnuplot (out);
-        out.close();
     }
 
     system_matrix.reinit (sparsity_pattern);
@@ -762,43 +755,67 @@ Elastic::ElasticBase<dim>::to_upper(const std::string str){
 template <int dim>
 void
 Elastic::ElasticBase<dim>::generate_matlab_study(){
+    ostringstream ss;
+    ofstream myfile;
+    // Write all Aij blocks
     for(int i=0; i<n_blocks; ++i){
         for(int j=0; j<n_blocks; ++j){
-            string a = "a" + std::to_string(i) + std::to_string(j);
-            string p = "p" + std::to_string(i) + std::to_string(j);
-            write_matrix(system_matrix.block(i,j),a);
-            write_matrix(system_preconditioner.block(i,j),p);
+            ss << "a" << i << j;
+            write_matrix(system_matrix.block(i,j),ss.str());
+            ss.str("");
         }
     }
+    // Flush the stream
+    ss.str("");
+    // Write only the last Preconditioner part since this is the only different part from system matrix
+    ss << "p" << n_blocks-1 << n_blocks-1;
+    write_matrix(system_preconditioner.block(n_blocks-1,n_blocks-1),ss.str());
+    ss.str("");
+
     write_vector(system_rhs,"rhs");
-    // printing: matrices, par->info
-
-    string extension;
-    // Generate Matlab filename
-    ostringstream tempOS;
-    ofstream myfile;
-
-    tempOS << "matrices" << par->str_poisson << ".m";
-    extension = tempOS.str().c_str();
 
     // Open file
-    myfile.open(extension.c_str());
+    ss << "matrices" << par->str_poisson << ".m";
+    myfile.open(ss.str().c_str());
+    ss.str("");
+
     if(!myfile.is_open()){
         cout << "Print_matlab: Unable to open file...";
         return;
     }
 
     myfile << "%loading data" << std::endl;
+
     for(int i=0; i<n_blocks; ++i){
         for(int j=0; j<n_blocks; ++j){
-            string a = "data_a" + std::to_string(i) + std::to_string(j)
-                    + " = load_sparse('data_a" + std::to_string(i) + std::to_string(j) + ".dat');";
-            string p = "data_p" + std::to_string(i) + std::to_string(j)
-                    + " = load_sparse('data_p" + std::to_string(i) + std::to_string(j) + ".dat');";
-            myfile << a << endl;
-            myfile << p << endl;
+            ss << "a" << i << j
+               << " = load('data_a" << i << j << ".dat');" << std::endl;
+
+            ss << "a" << i << j << "(:,1:2) = "
+               << "a" << i << j << "(:,1:2) + 1;" << std::endl;
+
+            ss << "a" << i << j << " = spconvert("
+               << "a" << i << j << ");" << std::endl;
+
+            ss << "p" << i << j
+               << " = a" << i << j << ";";
+            myfile << ss.str() << endl;
+            ss.str("");
         }
     }
+
+    // Load Schur preconditioner to matlab
+    ss << "p" << n_blocks-1 << n_blocks-1
+       << " = load('data_p" << n_blocks-1 << n_blocks-1 << ".dat');" << std::endl;
+
+    ss << "p" << n_blocks-1 << n_blocks-1 << "(:,1:2) = "
+       << "p" << n_blocks-1 << n_blocks-1 << "(:,1:2) + 1;" << std::endl;
+
+    ss << "p" << n_blocks-1 << n_blocks-1 << " = spconvert("
+       << "p" << n_blocks-1 << n_blocks-1 << ");" << std::endl;
+    myfile << ss.str() << endl;
+    ss.str("");
+
     myfile << "load('data_l_m.dat');"  << endl
            << "load('data_l_p.dat');"  << endl;
 
@@ -806,8 +823,9 @@ Elastic::ElasticBase<dim>::generate_matlab_study(){
            << "A = [";
     for(int i=0; i<n_blocks; ++i){
         for(int j=0; j<n_blocks; ++j){
-            string a = "data_a" + std::to_string(i) + std::to_string(j) + " ";
-            myfile << a;
+            ss << "a" << i << j << " ";
+            myfile << ss.str();
+            ss.str("");
         }
         myfile << ";" << endl;
     }
@@ -817,52 +835,43 @@ Elastic::ElasticBase<dim>::generate_matlab_study(){
     myfile << "P = [";
     for(int i=0; i<n_blocks; ++i){
         for(int j=0; j<n_blocks; ++j){
-            string p = "data_p" + std::to_string(i) + std::to_string(j) + " ";
-            myfile << p;
+            ss << "p"  << i << j << " ";
+            myfile << ss.str();
+            ss.str("");
         }
         myfile << ";" << endl;
     }
     myfile << "];";
 
     myfile.close();
-
-    // Open file
-    myfile.open("load_sparse.m");
-    if(!myfile.is_open()){
-        cout << "Print_matlab: Unable to open file...";
-        return;
-    }
-
-    myfile << "function mat = load_sparse(f)" << endl
-           << "% Reading output matrix from deal.II into matlab" << endl
-           << "fid = fopen(f, 'rt');" << endl
-           << "[m n] = fscanf(fid, '(%d,%d) %e\\n'); % has the particular format" << endl
-           << "% reorganizes the data" << endl
-           << "count = 1;" << endl
-           << "for k = [1:3:n]" << endl
-           << "    I(count) = m(k)+1;" << endl
-           << "    J(count) = m(k+1)+1;" << endl
-           << "    v(count) = m(k+2);" << endl
-           << "    count = count + 1;" << endl
-           << "end" << endl
-           << "fclose(fid);" << endl
-           << "% create a sparse stiffness matrix with the input" << endl
-           << "mat=sparse(I,J,v);" << endl
-           << "end" << endl;
-    myfile.close();
 }
 
 // Create a matlab file with matrices
 template <int dim>
 void
-Elastic::ElasticBase<dim>::write_matrix(const TrilinosWrappers::SparseMatrix &M, string filename ){
-    int PSC = 13;
-    //Printing in matlab form
+Elastic::ElasticBase<dim>::write_matrix(TrilinosWrappers::SparseMatrix &M, string filename ){
+    register double val = 0;
+    register int row, col;
     string name = "data_" + filename + ".dat";
-    std::ofstream matFile (name.c_str());
-    matFile << setprecision(PSC);
-    M.print(matFile);
-    matFile.close();
+    FILE *fp;
+    fp = fopen(name.c_str(),"w");
+
+
+    TrilinosWrappers::SparseMatrix::iterator it = M.begin(),
+            it_end = M.end();
+
+    int i = 0;
+    for (; it!=it_end; ++it) {
+        val = it.operator*().value();
+        if(val == 0)
+            continue;
+        row = it.operator*().row();
+        col = it.operator*().column();
+        fprintf(fp, "%d %d %.20f\n", row, col, val);
+        ++i;
+    }
+
+    fclose(fp);
 }
 
 // Create a matlab file with vectors
