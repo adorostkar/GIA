@@ -175,9 +175,9 @@ Elastic::ElasticProblem<dim>::solve ()
     solver_control.log_history(true);
     solver_control.log_result(true);
     
-    SolverGMRES<TrilinosWrappers::BlockVector>
+    SolverFGMRES<TrilinosWrappers::BlockVector>
             solver (solver_control,
-                    SolverGMRES<TrilinosWrappers::BlockVector >::AdditionalData(100));
+                    SolverFGMRES<TrilinosWrappers::BlockVector >::AdditionalData(100));
     
     deallog.push("Outer");
     solver.solve(ElasticBase<dim>::system_matrix, ElasticBase<dim>::solution, ElasticBase<dim>::system_rhs, preconditioner);

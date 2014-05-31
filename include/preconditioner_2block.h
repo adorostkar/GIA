@@ -80,8 +80,8 @@ vmult (TrilinosWrappers::BlockVector       &dst,
     control_inv.log_history (true);
     control_inv.log_result (true);
 
-    SolverGMRES<TrilinosWrappers::Vector> // SchurTOL
-            solver_A (control_inv, SolverGMRES<TrilinosWrappers::Vector >::AdditionalData(100));
+    SolverFGMRES<TrilinosWrappers::Vector> // SchurTOL
+            solver_A (control_inv, SolverFGMRES<TrilinosWrappers::Vector >::AdditionalData(100));
 
     deallog.push("A1");
     solver_A.solve(s_matrix->block(0,0), dst.block(0), src.block(0), a_preconditioner);
@@ -106,8 +106,8 @@ vmult (TrilinosWrappers::BlockVector       &dst,
         control_s.log_history (true);
         control_s.log_result (true);
 
-        SolverGMRES<TrilinosWrappers::Vector> // SchurTOL
-                solver (control_s, SolverGMRES<TrilinosWrappers::Vector >::AdditionalData(100));
+        SolverFGMRES<TrilinosWrappers::Vector> // SchurTOL
+                solver (control_s, SolverFGMRES<TrilinosWrappers::Vector >::AdditionalData(100));
 
         deallog.push("Schur");
         solver.solve(s_matrix->block(1,1), dst.block(1), tmp, s_preconditioner);

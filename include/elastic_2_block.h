@@ -106,6 +106,7 @@ Elastic::Elastic2Blocks<dim>::setup_AMG ()
     amg_A.higher_order_elements = false;
     amg_A.smoother_sweeps = 2;
     amg_A.aggregation_threshold = ElasticBase<dim>::par->threshold;
+//    amg_A.output_details = true;
 
 
     A_preconditioner->initialize( ElasticBase<dim>::system_preconditioner.block(0,0),amg_A);
@@ -135,9 +136,9 @@ Elastic::Elastic2Blocks<dim>::solve ()
     solver_control.log_history(true);
     solver_control.log_result(true);
 
-    SolverGMRES<TrilinosWrappers::BlockVector>
+    SolverFGMRES<TrilinosWrappers::BlockVector>
             solver (solver_control,
-                    SolverGMRES<TrilinosWrappers::BlockVector >::AdditionalData(100));
+                    SolverFGMRES<TrilinosWrappers::BlockVector >::AdditionalData(100)); // With restart of 100
 
     deallog.push("Outer");
     solver.solve(ElasticBase<dim>::system_matrix, ElasticBase<dim>::solution, ElasticBase<dim>::system_rhs, preconditioner);
