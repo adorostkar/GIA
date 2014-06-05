@@ -64,8 +64,8 @@ private:
     // Solve the system
     virtual void solve ();
 
-    std_cxx1x::shared_ptr<typename Preconditioner::inner> A_preconditioner;
-    std_cxx1x::shared_ptr<typename Preconditioner::schur> S_preconditioner;
+    std_cxx1x::shared_ptr<TrilinosWrappers::PreconditionAMG> A_preconditioner;
+    std_cxx1x::shared_ptr<TrilinosWrappers::PreconditionAMG> S_preconditioner;
 };
 }
 
@@ -84,10 +84,10 @@ void
 Elastic::Elastic2Blocks<dim>::setup_AMG ()
 {
     A_preconditioner
-            = std_cxx1x::shared_ptr<typename Preconditioner::inner>(new typename Preconditioner::inner());
+            = std_cxx1x::shared_ptr<TrilinosWrappers::PreconditionAMG>(new TrilinosWrappers::PreconditionAMG());
 
     S_preconditioner
-            = std_cxx1x::shared_ptr<typename Preconditioner::schur>(new typename Preconditioner::schur());
+            = std_cxx1x::shared_ptr<TrilinosWrappers::PreconditionAMG>(new TrilinosWrappers::PreconditionAMG());
 
     std::vector<std::vector<bool> > constant_modes;
     std::vector<bool>  displacement_components (ElasticBase<dim>::n_components,true);
@@ -126,8 +126,8 @@ template <int dim>
 void
 Elastic::Elastic2Blocks<dim>::solve ()
 {
-    const Preconditioner2Blocks< typename Preconditioner::inner, // A, schur
-            typename Preconditioner::schur>
+    const Preconditioner2Blocks< TrilinosWrappers::PreconditionAMG, // A, schur
+            TrilinosWrappers::PreconditionAMG>
             preconditioner( ElasticBase<dim>::system_preconditioner, *A_preconditioner, *S_preconditioner); // system_matrix
 
     SolverControl solver_control (ElasticBase<dim>::system_matrix.m(),
@@ -146,7 +146,10 @@ Elastic::Elastic2Blocks<dim>::solve ()
 #ifdef LOGRUN
     deallog.push("Outer");
 #endif
-    solver.solve(ElasticBase<dim>::system_matrix, ElasticBase<dim>::solution, ElasticBase<dim>::system_rhs, preconditioner);
+    solver.solve(ElasticBase<dim>::system_matrix,
+                 ElasticBase<dim>::solution,
+                 ElasticBase<dim>::system_rhs,
+                 preconditioner);
 #ifdef LOGRUN
     deallog.pop();
 #endif

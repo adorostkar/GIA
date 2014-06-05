@@ -58,17 +58,6 @@
 using namespace dealii;
 namespace Elastic
 {
-// Solver structure
-struct Solver {
-    typedef SolverGMRES<TrilinosWrappers::Vector>	inner;
-    typedef SolverGMRES<>	schur;
-};
-
-// Preconditioner structure
-struct Preconditioner{
-    typedef TrilinosWrappers::PreconditionAMG schur;
-    typedef TrilinosWrappers::PreconditionAMG inner; // set AMG true
-};
 
 template <int dim>
 class ElasticBase {
@@ -534,9 +523,6 @@ Elastic::ElasticBase<dim>::assemble_system ()
         l_S.triple_product 	(	l_Ainv,l_B,l_Bt,false,false, -1.0  );
         // End Schur calculation
 
-        if(par->one_schur_it)
-            l_S.gauss_jordan();
-
         // begin Schur assembly preconditioner
         for (unsigned int i=0; i< dim_p; ++i)// shape index i
             for (unsigned int j=0; j < dim_p; ++j)
@@ -614,9 +600,9 @@ Elastic::ElasticBase<dim>::run ()
 {
     int inv_iter = 0, schur_iter = 0;
 #ifdef LOG_RUN
-    oout << GREEN << "Loging enabled." << RESET << std::endl;
+    oout << GREEN << "Logging enabled." << RESET << std::endl;
 #else
-    oout << GREEN << "Loging disabled." << RESET << std::endl;
+    oout << GREEN << "Logging disabled." << RESET << std::endl;
 #endif
 
     // Printing application variable

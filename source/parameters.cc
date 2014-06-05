@@ -121,7 +121,6 @@ void parameters::create_options() {
             ("refinement,r", po::value<int>(&refinements), "Number of refinements")
             ("schur_tol,s", po::value<double>(), "Tolerance to compute Schur complement")
             ("system_tol,t", po::value<double>(), "System solver tollerance")
-            ("one_schur,o", "One schur iteration")
             ("young,y", po::value<double>(&YOUNG), "Set Young's modulus")
             ("threshold,z", po::value<double>(), "Application threashold");
 
@@ -153,7 +152,6 @@ void parameters::create_options() {
             ("enable.divergance", po::value<bool>(&div_enabled), "Enable/Disable divergance")
             ("enable.precondition", po::value<bool>(&precond),
              "Precondition A using whole/diagBlock of A {1|0}")
-            ("enable.one_schur_it", po::value<bool>(&one_schur_it), "One Schure iteration")
             ("tolerance.inverse",po::value<double>(&InvMatPreTOL), "Tolerance for inverse calculation")
             ("tolerance.schur", po::value<double>(&SchurTOL), "Tolerance to compute Schur complement")
             ("tolerance.system", po::value<double>(&TOL), "System solver tolerance")
@@ -199,8 +197,6 @@ void parameters::setup_variables(po::variables_map& vm) {
     if(vm.count("system_tol")){
         TOL = vm["system_tol"].as<double>();
     }
-    if(vm.count("one_schur"))
-        one_schur_it = true;
     if(vm.count("threshold")){
         threshold = vm["threshold"].as<double>();
     }
@@ -393,7 +389,6 @@ std::ostream & parameters::print_values(std::ostream &ostr){
     ostr<< setw(c1) << "SchurTOL=" << SchurTOL << endl;
     ostr<< setw(c1) << "TOL=" << TOL << endl;
     ostr<< setw(c1) << "threshold=" << threshold << endl;
-    ostr<< setw(c1) << "one_schur_it=" << one_schur_it << endl;
     ostr<< setw(c1) << "info=" << info << endl;
     ostr<< setw(c1) << "print_matrices=" << print_matrices << endl;
     ostr<< setw(c1) << "system_iter=" << system_iter << endl;
@@ -418,7 +413,7 @@ std::ostream & parameters::print_values(std::ostream &ostr){
 std::ostream & parameters::print_variables(std::ostream & outStr){
     using namespace std;
     ios::fmtflags f(outStr.flags());
-    int c1 = (one_schur_it) ? 15 : 22;
+    int c1 = 22;
 
     outStr << left;
     outStr << "Problem:" << endl;
@@ -427,12 +422,8 @@ std::ostream & parameters::print_variables(std::ostream & outStr){
 
     outStr << setw(c1) << "\tRefinements: " << refinements << endl;
 
-
-    if(one_schur_it)
-        outStr << setw(c1) << "\tSystemTol: " << TOL << endl;
-    else
-        outStr << setw(c1) << "\tTOL(P_00,Schur): "
-               << TOL << "(" << InvMatPreTOL << ", " << SchurTOL << ")"
+    outStr << setw(c1) << "\tTOL(P_00,Schur): "
+           << TOL << "(" << InvMatPreTOL << ", " << SchurTOL << ")"
            << endl;
 
     outStr << setw(c1) << "\tAdv/Div: ";
@@ -505,7 +496,6 @@ void parameters::write_sample_file(){
            "\tweight=0\n" <<
            "\tadvection=1\n" <<
            "\tdivergance=1\n" <<
-           "\tone_schur_it=0\n" <<
            "## Use the whole block A_11 in the preconditioner.\n" <<
            "\tprecondition=1\n" <<
            "## Solvers tolerances\n"<<

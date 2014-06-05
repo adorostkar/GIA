@@ -98,7 +98,7 @@ public:
      * \brief print_matrices prints global matrices to output
      * \brief one_schur_it uses one iteration to compute Schure
      */
-    bool						precond, print_matrices, one_schur_it, output_results;
+    bool						precond, print_matrices, output_results;
 
     /*!
      * \brief load_enabled is load enabled on the surface.

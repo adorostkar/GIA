@@ -73,9 +73,9 @@ private:
     // Solve the system
     virtual void solve ();
 
-    std_cxx1x::shared_ptr<typename Preconditioner::inner> A0_preconditioner;
-    std_cxx1x::shared_ptr<typename Preconditioner::inner> A1_preconditioner;
-    std_cxx1x::shared_ptr<typename Preconditioner::schur> S_preconditioner;
+    std_cxx1x::shared_ptr<TrilinosWrappers::PreconditionAMG> A0_preconditioner;
+    std_cxx1x::shared_ptr<TrilinosWrappers::PreconditionAMG> A1_preconditioner;
+    std_cxx1x::shared_ptr<TrilinosWrappers::PreconditionAMG> S_preconditioner;
 };
 }
 
@@ -99,13 +99,13 @@ Elastic::ElasticProblem<dim>::setup_AMG ()
     S_preconditioner.reset ();
 
     A0_preconditioner
-            = std_cxx1x::shared_ptr<typename Preconditioner::inner>(new typename Preconditioner::inner());
+            = std_cxx1x::shared_ptr<TrilinosWrappers::PreconditionAMG>(new TrilinosWrappers::PreconditionAMG);
 
     A1_preconditioner
-            = std_cxx1x::shared_ptr<typename Preconditioner::inner>(new typename Preconditioner::inner());
+            = std_cxx1x::shared_ptr<TrilinosWrappers::PreconditionAMG>(new TrilinosWrappers::PreconditionAMG);
     
     S_preconditioner
-            = std_cxx1x::shared_ptr<typename Preconditioner::schur>(new typename Preconditioner::schur());
+            = std_cxx1x::shared_ptr<TrilinosWrappers::PreconditionAMG>(new TrilinosWrappers::PreconditionAMG);
 
     std::vector<std::vector<bool> > constant_modes;
     std::vector<bool>  displacement_components (dim+1,false);
@@ -162,8 +162,8 @@ void
 Elastic::ElasticProblem<dim>::solve ()
 {
     
-    const BlockSchurPreconditioner<typename Preconditioner::inner, // A0, schur
-            typename Preconditioner::schur>
+    const BlockSchurPreconditioner<TrilinosWrappers::PreconditionAMG,
+                                   TrilinosWrappers::PreconditionAMG>
             preconditioner( ElasticBase<dim>::system_preconditioner,
                             *A0_preconditioner,
                             *A1_preconditioner,
@@ -185,7 +185,10 @@ Elastic::ElasticProblem<dim>::solve ()
 #ifdef LOG_RUN
     deallog.push("Outer");
 #endif
-    solver.solve(ElasticBase<dim>::system_matrix, ElasticBase<dim>::solution, ElasticBase<dim>::system_rhs, preconditioner);
+    solver.solve(ElasticBase<dim>::system_matrix,
+                 ElasticBase<dim>::solution,
+                 ElasticBase<dim>::system_rhs,
+                 preconditioner);
 #ifdef LOG_RUN
     deallog.pop();
 #endif

@@ -102,34 +102,28 @@ vmult (TrilinosWrappers::BlockVector       &dst,
 
     schur_relative_tol = par->SchurTOL*tmp.l2_norm();
 
-    if(par->one_schur_it){// Use one iteration to find Schure complement
-        s_preconditioner.vmult (dst.block(1), tmp);
-        par->schur_iterations.push_back(1);
-    }
-    else{
-        SolverControl control_s (s_matrix->block(1,1).m(),
-                                 schur_relative_tol);
+    SolverControl control_s (s_matrix->block(1,1).m(),
+                             schur_relative_tol);
 
 #ifdef LOGRUN
-        control_s.enable_history_data ();
-        control_s.log_history (true);
-        control_s.log_result (true);
+    control_s.enable_history_data ();
+    control_s.log_history (true);
+    control_s.log_result (true);
 #endif
 
-        SolverFGMRES<TrilinosWrappers::Vector> // SchurTOL
-                solver (control_s, SolverFGMRES<TrilinosWrappers::Vector >::AdditionalData(100));
+    SolverFGMRES<TrilinosWrappers::Vector> // SchurTOL
+            solver (control_s, SolverFGMRES<TrilinosWrappers::Vector >::AdditionalData(100));
 
 #ifdef LOGRUN
-        deallog.push("Schur");
+    deallog.push("Schur");
 #endif
-        solver.solve(s_matrix->block(1,1), dst.block(1), tmp, s_preconditioner);
+    solver.solve(s_matrix->block(1,1), dst.block(1), tmp, s_preconditioner);
 #ifdef LOGRUN
-        deallog.pop();
+    deallog.pop();
 #endif
 
-        // Push number of inner iterations for computing Schure complement.
-        par->schur_iterations.push_back(control_s.last_step());
-    }
+    // Push number of inner iterations for computing Schure complement.
+    par->schur_iterations.push_back(control_s.last_step());
 }
 
 #endif // PRECONDITIONER_2BLOCK_H
