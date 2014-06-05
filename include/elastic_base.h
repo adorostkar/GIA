@@ -613,6 +613,11 @@ void
 Elastic::ElasticBase<dim>::run ()
 {
     int inv_iter = 0, schur_iter = 0;
+#ifdef LOG_RUN
+    oout << GREEN << "Loging enabled." << RESET << std::endl;
+#else
+    oout << GREEN << "Loging disabled." << RESET << std::endl;
+#endif
 
     // Printing application variable
     par->print_variables(oout);
@@ -634,26 +639,30 @@ Elastic::ElasticBase<dim>::run ()
               std::ostream_iterator<int>(oout,"+") );
     oout << "\b)" << std::endl;
 
-    oout << GREEN << "\tAssembling | " << flush;
+    oout << GREEN << "\tAssembling" << RESET << flush;
     timer.enter_section("Assembling");
     assemble_system ();
     timer.exit_section();
 
-    oout << "Setup AMG | " << flush;
+    oout << GREEN << " | Setup AMG" << RESET << flush;
     timer.enter_section("Setup AMG");
     setup_AMG ();
     timer.exit_section();
 
-    oout << "Solve system | " << flush;
+    oout << GREEN << " | Solve system" << RESET << flush;
     timer.enter_section("System solver");
     solve ();
     timer.exit_section();
 
-    oout << "Extract results | " << flush;
-    output_results ();
+    if(par->output_results){
+        oout << GREEN << " | Extract results" << RESET << flush;
+        output_results ();
 
-    oout << "Extract surface" << RESET << std::endl;
-    output_surface();
+        oout << GREEN << " | Extract surface" << RESET << flush;
+        output_surface();
+    }
+
+    oout << std::endl;
 
     if(par->print_matrices ){
         oout << RED << "\t\t>>> Printing matrices in Matlab format <<<" << RESET << std::endl;
@@ -677,7 +686,7 @@ Elastic::ElasticBase<dim>::run ()
              << u_er << "," << p_er << std::endl;
     }
 
-    oout   << "GMRES iterations: system(P_00,Schur) = "
+    oout   << "FGMRES iterations: system(P_00,Schur) = "
            << par->system_iter
            << "(" << inv_iter << ", " << schur_iter << ")"
            << std::endl;
@@ -757,6 +766,23 @@ void
 Elastic::ElasticBase<dim>::generate_matlab_study(){
     ostringstream ss;
     ofstream myfile;
+    // Extract node points
+    std::vector<Point<dim> > support_points(dof_handler.n_dofs());
+    const MappingQ<dim> mapping(degree);
+    DoFTools::map_dofs_to_support_points(mapping,dof_handler,support_points);
+
+    // Open file
+    myfile.open("nodes.dat");
+    if(!myfile.is_open()){
+        cout << "Print_matlab: Unable to open file...";
+        return;
+    }
+
+    for(unsigned int i=0; i<support_points.size(); ++i)
+            myfile << support_points[i]<< std::endl;
+
+    myfile.close();
+
     // Write all Aij blocks
     for(int i=0; i<n_blocks; ++i){
         for(int j=0; j<n_blocks; ++j){

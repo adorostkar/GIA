@@ -146,6 +146,7 @@ void parameters::create_options() {
             ("boundaries.right", po::value<string>(), "Right wall boundary")
             ("boundaries.left", po::value<string>(), "Left wall boundary")
             ("boundaries.bottom", po::value<string>(), "Bottom wall boundary")
+            ("enable.outputResults", po::value<bool>(&output_results), "Enable/Disable output results")
             ("enable.load", po::value<bool>(&load_enabled), "Enable/Disable load")
             ("enable.weight", po::value<bool>(&weight_enabled), "Enable/Disable weight")
             ("enable.advection", po::value<bool>(&adv_enabled), "Enable/Disable advection")
@@ -499,7 +500,8 @@ void parameters::write_sample_file(){
            "\tbottom=NO_SLIP\n" <<
            "## Toggles to enable/disable\n" <<
            "[enable]\n"<<
-           "\tload=1\n"
+           "\toutputResults=1\n"<<
+           "\tload=1\n" <<
            "\tweight=0\n" <<
            "\tadvection=1\n" <<
            "\tdivergance=1\n" <<
@@ -508,7 +510,7 @@ void parameters::write_sample_file(){
            "\tprecondition=1\n" <<
            "## Solvers tolerances\n"<<
            "[tolerance]\n"
-           "\tinverse=1e-2\n" <<
+           "\tinverse=1e-1\n" <<
            "\tschur=1e-1\n" <<
            "\tsystem=1e-7\n" <<
            "# AMG options\n" <<

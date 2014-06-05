@@ -18,6 +18,11 @@ FILE(GLOB headers ./include/*.h)
 FILE(GLOB sources ./source/*.cc)
 ADD_EXECUTABLE(elastic ${sources} ${headers})
 
+option(LOG_RUN ON)
+IF(LOG_RUN)
+    ADD_DEFINITIONS(-DLOGRUN)
+ENDIF(LOG_RUN)
+
 ADD_CUSTOM_TARGET(clear
   COMMAND rm ${CLEAN_UP_FILES}
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -35,7 +40,6 @@ ADD_CUSTOM_TARGET(release
   COMMENT "Switch CMAKE_BUILD_TYPE to Release"
   )
 
-#ADD_EXECUTABLE(elastic ${sources})
 set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} /opt/local/lib)
 TARGET_LINK_LIBRARIES(elastic /opt/local/lib/libboost_program_options-mt.a)
 DEAL_II_SETUP_TARGET(elastic)

@@ -132,17 +132,24 @@ Elastic::Elastic2Blocks<dim>::solve ()
 
     SolverControl solver_control (ElasticBase<dim>::system_matrix.m(),
                                   ElasticBase<dim>::par->TOL*ElasticBase<dim>::system_rhs.l2_norm());
+
+#ifdef LOGRUN
     solver_control.enable_history_data();
     solver_control.log_history(true);
     solver_control.log_result(true);
+#endif
 
     SolverFGMRES<TrilinosWrappers::BlockVector>
             solver (solver_control,
                     SolverFGMRES<TrilinosWrappers::BlockVector >::AdditionalData(100)); // With restart of 100
 
+#ifdef LOGRUN
     deallog.push("Outer");
+#endif
     solver.solve(ElasticBase<dim>::system_matrix, ElasticBase<dim>::solution, ElasticBase<dim>::system_rhs, preconditioner);
+#ifdef LOGRUN
     deallog.pop();
+#endif
 
     ElasticBase<dim>::par->system_iter = solver_control.last_step();
 }

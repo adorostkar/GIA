@@ -1,5 +1,8 @@
 /** TODO
+ *
  */
+
+
 #ifndef PARAMETERS_H_
 #define PARAMETERS_H_
 
@@ -14,6 +17,8 @@
 #include <string.h>
 #include <sstream>
 #include <sys/stat.h>
+
+// Define LOG_RUN to log residuals and solvers
 
 #define ZERO 1.0e-8
 
@@ -93,7 +98,7 @@ public:
      * \brief print_matrices prints global matrices to output
      * \brief one_schur_it uses one iteration to compute Schure
      */
-    bool						precond, print_matrices, one_schur_it;
+    bool						precond, print_matrices, one_schur_it, output_results;
 
     /*!
      * \brief load_enabled is load enabled on the surface.

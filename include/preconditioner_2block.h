@@ -76,16 +76,23 @@ vmult (TrilinosWrappers::BlockVector       &dst,
     // Solver for solving the block with A0^{-1}
     SolverControl control_inv (s_matrix->block(0,0).m(),
                                inv_relative_tol);
+
+#ifdef LOGRUN
     control_inv.enable_history_data ();
     control_inv.log_history (true);
     control_inv.log_result (true);
+#endif
 
     SolverFGMRES<TrilinosWrappers::Vector> // SchurTOL
             solver_A (control_inv, SolverFGMRES<TrilinosWrappers::Vector >::AdditionalData(100));
 
+#ifdef LOGRUN
     deallog.push("A1");
+#endif
     solver_A.solve(s_matrix->block(0,0), dst.block(0), src.block(0), a_preconditioner);
+#ifdef LOGRUN
     deallog.pop();
+#endif
 
     // Push number of inner iterations to solve first block.
     par->inv_iterations.push_back(control_inv.last_step());// + control_inv1.last_step());
@@ -102,16 +109,23 @@ vmult (TrilinosWrappers::BlockVector       &dst,
     else{
         SolverControl control_s (s_matrix->block(1,1).m(),
                                  schur_relative_tol);
+
+#ifdef LOGRUN
         control_s.enable_history_data ();
         control_s.log_history (true);
         control_s.log_result (true);
+#endif
 
         SolverFGMRES<TrilinosWrappers::Vector> // SchurTOL
                 solver (control_s, SolverFGMRES<TrilinosWrappers::Vector >::AdditionalData(100));
 
+#ifdef LOGRUN
         deallog.push("Schur");
+#endif
         solver.solve(s_matrix->block(1,1), dst.block(1), tmp, s_preconditioner);
+#ifdef LOGRUN
         deallog.pop();
+#endif
 
         // Push number of inner iterations for computing Schure complement.
         par->schur_iterations.push_back(control_s.last_step());

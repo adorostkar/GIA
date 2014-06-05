@@ -9,9 +9,8 @@ int main (int argc, char** argv)
 
     parameters *par;
     int width = 30;
-	try
-    {
-		
+
+	try{
 		// MPI_Init (&argc, &argv);
         Utilities::MPI::MPI_InitFinalize mpi_initialization (argc, argv);
 		
@@ -25,7 +24,6 @@ int main (int argc, char** argv)
         // Attach deallog to process output
         deallog.attach(pout);
         deallog.depth_console (0);
-
 
         if(par->precond){
             if(par->dimension == 2){
@@ -44,10 +42,8 @@ int main (int argc, char** argv)
                 elastic_problem.run ();
             }
         }
-
     }
-	catch (std::exception &exc)
-    {
+	catch (std::exception &exc){
         std::cerr << setw(width) << setfill('-') << "" << std::endl;
 		std::cerr << "Exception on processing: " << std::endl
 		<< exc.what() << std::endl
@@ -56,8 +52,7 @@ int main (int argc, char** argv)
 		
 		return 1;
     }
-	catch (...)
-    {
+	catch (...){
         std::cerr << setw(width) << setfill('-') << "" << std::endl;
 		std::cerr << "Unknown exception!" << std::endl
 		<< "Aborting!" << std::endl
